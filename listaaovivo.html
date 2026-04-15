@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>ON-AIR - MASTER CONTROL TV SENADO</title>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+   <style>
+        /* =====================================================================
+           VARIÁVEIS GLOBAIS (:root)
+           Controla a paleta de cores de todo o painel ON-AIR.
+           Mudar uma cor aqui reflete no código inteiro.
+           ===================================================================== */
+        :root { 
+            --bg-body: #0c0c0c;         /* Fundo escuro da tela ON-AIR (cinza quase preto) */
+            --bg-card: #ffffff;         /* Fundo dos cards das pautas (branco) */
+            --accent-blue: #0056b3;     /* Azul destaque (usado no relógio e horas) */
+            --text-main: #2c3e50;       /* Cor da fonte principal (cinza chumbo) */
+            --text-dim: #d3d3d3;        /* Cor do texto secundário/apagado */
+            --border-light: #e1e4e8;    /* Cor das bordas dos cards */
+            
+            /* Cores dos Status das Comissões */
+            --status-aguardando: #2980b9; 
+            --status-iniciado: #27ae60; 
+            --status-suspenso: #f39c12; 
+            --status-encerrado: #c0392b; 
+            --status-cancelado: #d35400; 
+            --status-urgente: #ee372a;    /* Alerta laranja para 5min ou atraso */
+        }
+        
+        /* =====================================================================
+           RESET E BASE DA PÁGINA
+           Garante que a tela ocupe exatamente o tamanho do monitor, sem sobrar.
+           ===================================================================== */
+        * { box-sizing: border-box; } /* Impede que paddings aumentem o tamanho real das caixas */
+        
+        body { 
+            background-color: var(--bg-body); 
+            color: var(--text-main); 
+            font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+            margin: 0; padding: 0; 
+            overflow-x: hidden; /* Corta rolagem para os lados */
+            overflow-y: auto;   /* Permite rolar para baixo se necessário */
+            min-height: 100vh;  /* Ocupa pelo menos 100% da altura da tela */
+            width: 100vw;       /* Ocupa 100% da largura da tela */
+        }
+        
+        /* Espaçamento principal ao redor de toda a tela */
+        .screen-container { height: 100vh; display: flex; flex-direction: column; padding: 15px 2vw; }
+
+        /* =====================================================================
+           CABEÇALHO (TOP BAR)
+           Contém os Status (Contadores) na esquerda e Relógio/Botão na direita
+           ===================================================================== */
+        header { 
+            flex-shrink: 0; 
+            display: flex; justify-content: space-between; align-items: flex-end; 
+            margin-bottom: 10px; border-bottom: 2px solid var(--border-light); padding-bottom: 5px; 
+        }
+        
+        .title-group { display: flex; flex-direction: column; gap: 8px; }
+        
+        /* Contadores de Status (No Ar: 1, Susp: 0, etc.) */
+        .stats-bar { display: flex; gap: 6px; flex-wrap: wrap; }
+        .stat-badge { font-size: clamp(0.75rem, 1.1vw, 0.85rem); font-weight: 700; padding: 4px 8px; border-radius: 4px; display: flex; gap: 4px; align-items: center; border: 1px solid; white-space: nowrap; }
+        .stat-badge span { font-size: clamp(0.9rem, 1.3vw, 1.1rem); font-weight: 800; }
+        
+        /* Cores específicas para cada contador no topo */
+        .s-iniciada { color: var(--status-iniciado); background: rgba(39,174,96,0.1); border-color: rgba(39,174,96,0.3); }
+        .s-suspensa { color: var(--status-suspenso); background: rgba(243,156,18,0.1); border-color: rgba(243,156,18,0.3); }
+        .s-aguardando { color: var(--status-aguardando); background: rgba(41,128,185,0.1); border-color: rgba(41,128,185,0.3); }
+        .s-encerrada { color: var(--status-encerrado); background: rgba(192,57,43,0.1); border-color: rgba(192,57,43,0.3); }
+
+        /* Área Direita (Botão de Limpar e Relógio Digital) */
+        .header-right { display: flex; align-items: center; gap: 20px; }
+        
+        .btn-limpar { background-color: transparent; color: var(--status-encerrado); border: 2px solid var(--status-encerrado); padding: 6px 12px; border-radius: 6px; font-family: 'Inter', sans-serif; font-weight: 700; font-size: clamp(0.8rem, 1vw, 1rem); cursor: pointer; transition: all 0.2s ease; text-transform: uppercase; }
+        .btn-limpar:hover { background-color: var(--status-encerrado); color: #fff; }
+
+        /* O Relógio usa a fonte JetBrains Mono (estilo terminal/código) */
+        #clock { font-size: clamp(2.8rem, 3vw, 2.2rem); font-family: 'JetBrains Mono', 'Consolas', monospace; color: var(--accent-blue); font-weight: 900; line-height: 1; margin: 0; }
+        
+        /* =====================================================================
+           SISTEMA DE GRID (A GRADE DOS CARDS)
+           Esta é a parte mais importante. Define o tamanho das 7 colunas.
+           O "minmax(0, Xfr)" divide o espaço total e evita que itens estiquem a tela.
+           ===================================================================== */
+        .pauta-grid-header, .pauta-row {
+            display: grid;
+            grid-template-columns: 
+                minmax(0, 3.3fr) /* 1. Pauta (A mais larga) */
+                minmax(0, 1.0fr) /* 2. Sala */
+                minmax(0, 1.2fr) /* 3. Libras */
+                minmax(0, 1.2fr) /* 4. X-Conv */
+                minmax(0, 1.0fr) /* 5. GC */
+                minmax(0, 1.9fr) /* 6. GC Op */
+                minmax(0, 1.5fr);/* 7. DTV */
+            align-items: center;
+            width: 100%;
+            gap: 1vw; /* Distância dinâmica entre colunas baseada na largura da tela */
+        }
+
+        /* O cabeçalho da tabela (PAUTA, SALA, LIBRAS...) */
+        .pauta-grid-header {
+            position: sticky; top: 0; z-index: 50; /* Fica fixo no topo ao rolar a página */
+            background: var(--bg-body);
+            padding: 8px 1vw;
+            color: var(--text-dim);
+            font-size: clamp(0.7rem, 1vw, 0.8rem);
+            font-weight: 700; 
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            border-bottom: 2px solid var(--border-light);
+        }
+
+        /* Garante que textos longos virem "..." (ellipsis) e não quebrem a tabela */
+        .pauta-grid-header div, .pauta-row > div {
+            min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+
+        /* Alinha todas as colunas técnicas no centro, exceto a primeira (Pauta) */
+        .pauta-grid-header div:not(:first-child), .pauta-row > div:not(.col-main) { text-align: center; }
+
+        /* =====================================================================
+           VISUAL DOS CARDS (As Linhas da Pauta)
+           ===================================================================== */
+        .pauta-row {
+            background: var(--bg-card);
+            margin-bottom: 8px; 
+            border-radius: 6px; 
+            padding: 10px 1vw; 
+            border: 2px solid var(--border-light);
+            transition: transform 0.2s ease, box-shadow 0.2s ease; /* Animação suave ao mover */
+            cursor: grab; /* Ícone de mão ao passar o mouse (para arrastar) */
+            min-height: 54px; 
+        }
+        
+        .pauta-row:active { cursor: grabbing; transform: scale(0.99); } /* Efeito de apertar ao arrastar */
+        .sortable-ghost { opacity: 0.4; background: #e8ecef !important; } /* Visual de "fantasma" ao arrastar */
+
+        /* CORES DE STATUS NAS BORDAS E SOMBRAS DOS CARDS */
+        .pauta-row.status-iniciada { border-color: var(--status-iniciado); box-shadow: inset 4px 0 0 var(--status-iniciado); }
+        .pauta-row.status-suspensa { border-color: var(--status-suspenso); box-shadow: inset 4px 0 0 var(--status-suspenso); }
+        .pauta-row.status-aguardando { border-color: var(--status-aguardando); box-shadow: inset 4px 0 0 var(--status-aguardando); }
+        .pauta-row.status-encerrada { border-color: rgba(192, 57, 43, 0.4); border-left: 4px solid var(--status-encerrado); }
+        .pauta-row.status-cancelada { border-color: rgba(211, 84, 0, 0.4); border-left: 4px solid var(--status-cancelado); }
+
+        /* Animação do Alerta Laranja (Urgente) */
+        @keyframes pulse-urgente-border { 
+            0% { border-color: var(--status-urgente); box-shadow: 0 0 0 rgba(134, 16, 16, 0.4); } 
+            50% { border-color: #d30000; box-shadow: 0 0 8px rgba(230, 34, 34, 0.842); } 
+            100% { border-color: var(--status-urgente); box-shadow: 0 0 0 rgba(230, 34, 34, 0.4); } 
+        }
+        .pauta-row.urgente { border-color: var(--status-urgente) !important; animation: pulse-urgente-border 1.5s infinite; }
+         /* ANIMAÇÃO DE URGÊNCIA (Borda e Sombra Interna Pulsante) */
+        @keyframes pulse-urgente-card { 
+            0% { 
+                border-color: #ff0055; 
+                box-shadow: inset 0 0 5px rgba(255, 0, 85, 0.2), 0 0 0 rgba(255, 0, 85, 0.2); 
+            } 
+            50% { 
+                border-color: #cc0044; 
+                /* Sombra interna forte (inset) e sombra externa leve */
+                box-shadow: inset 0 0 25px rgba(255, 0, 85, 0.6), 0 0 10px rgba(255, 0, 85, 0.4); 
+            } 
+            100% { 
+                border-color: #ff0055; 
+                box-shadow: inset 0 0 5px rgba(255, 0, 85, 0.2), 0 0 0 rgba(255, 0, 85, 0.2); 
+            } 
+        }
+
+        /* =====================================================================
+           ESTILIZAÇÃO DE TEXTOS E PÍLULAS INTERNAS
+           ===================================================================== */
+        
+        /* 1. Primeira Coluna Agrupada (Hora + Ícone de Status + Comissão) */
+        .col-main { display: flex; align-items: center; gap: 5px; }
+
+        /* Horário da Comissão */
+        .col-hora { flex-shrink: 0; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--accent-blue); font-size: clamp(1.25rem, 1.7vw, 1.5rem); }
+        
+        /* Nome da Comissão */
+        .comissao-name { 
+            font-weight: 700; color: var(--text-main); font-size: clamp(1.55rem, 1.6vw, 1.4rem); 
+            letter-spacing: -0.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
+            flex-grow: 1; min-width: 0; 
+        }
+        
+        /* Base para colunas técnicas (DTV, etc) */
+        .tech-data { font-family: 'JetBrains Mono', monospace; font-size: clamp(1.1rem, 1.4vw, 1.15rem); font-weight: 500; color: #34495e; }
+        
+        /* Sala */
+        .col-sala { font-weight: 600; color: var(--text-main); font-size: clamp(1.9rem, 1.5vw, 1.3rem); }
+        
+        /* GC Estação */
+        .col-gc { color: #c0392b; font-weight: 600; font-size: clamp(1.9rem, 1.3vw, 1.2rem); padding: 3px 8px; border-radius: 4px; } 
+        
+        /* GC Operador */
+        .GC-op { font-size: clamp(1.2rem, 1.3vw, 1.2rem); padding: 3px 8px; border-radius: 4px; }
+            
+        /* Pílulas de fundo colorido (Libras, X-Conv e GCs) */
+        .GC-tag { padding: 3px 8px; border-radius: 4px; font-size: clamp(1.9rem, 1.3vw, 1.2rem); display: inline-block; max-width: 100%; }
+
+        .libras-tag, .xconv-tag { 
+            font-weight: 600; font-size: clamp(1.9rem, 1.3vw, 1.2rem); 
+            padding: 3px 8px; border-radius: 4px; 
+            display: inline-block; max-width: 100%; 
+            overflow: hidden; text-overflow: ellipsis; 
+        }
+        .libras-tag { color: #8e44ad; background: rgba(142, 68, 173, 0.1); }
+        .xconv-tag { color: #16a085; background: rgba(22, 160, 133, 0.1); }
+        .GC-tag { color: #fd1313; background: rgba(142, 68, 173, 0.1); }
+        .GC-op { color: #fd1313; background: rgba(142, 68, 173, 0.1); }
+
+        /* =====================================================================
+           PONTO DE STATUS E CONFLITOS (AMARELO)
+           ===================================================================== */
+        /* Container e Bolinha de Status */
+        .status-dot-wrapper { flex-shrink: 0; display: flex; justify-content: center; align-items: center; padding: 0 4px; }
+        .status-dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+
+        /* Efeitos de pulso luminoso na bolinha */
+        @keyframes pulse-iniciado { 0% { box-shadow: 0 0 0 0 rgba(39, 174, 96, 0.6); } 70% { box-shadow: 0 0 0 8px rgba(39, 174, 96, 0); } 100% { box-shadow: 0 0 0 0 rgba(39, 174, 96, 0); } }
+        @keyframes pulse-suspenso { 0% { box-shadow: 0 0 0 0 rgba(243, 156, 18, 0.6); } 70% { box-shadow: 0 0 0 8px rgba(243, 156, 18, 0); } 100% { box-shadow: 0 0 0 0 rgba(243, 156, 18, 0); } }
+        @keyframes pulse-urgente-dot { 0% { box-shadow: 0 0 0 0 rgb(250, 0, 0); transform: scale(1); } 50% { box-shadow: 0 0 0 10px rgba(230, 126, 34, 0); transform: scale(1.1); } 100% { box-shadow: 0 0 0 0 rgba(230, 126, 34, 0); transform: scale(1); } }
+        
+        .status-iniciada .status-dot { background: var(--status-iniciado); animation: pulse-iniciado 2s infinite; }
+        .status-suspensa .status-dot { background: var(--status-suspenso); animation: pulse-suspenso 2s infinite; }
+        .status-aguardando .status-dot { border: 3px solid var(--status-aguardando); background: transparent; width: 10px; height: 10px; }
+        .status-encerrada .status-dot { background: var(--status-encerrado); }
+        .status-cancelada .status-dot { background: var(--status-cancelado); }
+        .urgente .status-dot { background: var(--status-urgente) !important; border: none; width: 14px; height: 14px; animation: pulse-urgente-dot 1s infinite; }
+
+     
+        .pauta-row.urgente { 
+            border-color: #ff0055 !important; 
+            animation: pulse-urgente-card 1.2s infinite ease-in-out !important; 
+        }
+
+        /* =====================================================================
+           ÁREA DE ROLAGEM (SCROLL) E HISTÓRICO
+           ===================================================================== */
+        #viewport-scroll { flex-grow: 1; overflow-y: auto; position: relative; padding-right: 5px; }
+        #viewport-scroll::-webkit-scrollbar, body::-webkit-scrollbar { width: 6px; }
+        #viewport-scroll::-webkit-scrollbar-track, body::-webkit-scrollbar-track { background: transparent; }
+        #viewport-scroll::-webkit-scrollbar-thumb, body::-webkit-scrollbar-thumb { background: #bdc3c7; border-radius: 10px; }
+        #viewport-scroll::-webkit-scrollbar-thumb:hover { background: #95a5a6; }
+
+        #history-section { padding: 15px 25px; background: #e8ecf1; border-top: 2px solid var(--border-light); min-height: 150px; box-sizing: border-box; }
+        .history-title { text-align: center; color: var(--text-dim); text-transform: uppercase; font-size: 0.85rem; letter-spacing: 2px; margin-bottom: 15px; font-weight: 800; opacity: 0.8; }
+
+        .status-cancelada, .status-encerrada { opacity: 0.6; filter: grayscale(0.2); background: #fdfdfd; box-shadow: none; }
+        .sortable-drag { opacity: 0; }
+        
+        /* =====================================================================
+           RESPONSIVIDADE (MEDIA QUERIES PARA CELULARES E TABLETS)
+           ===================================================================== */
+        
+        /* Telas até 1024px (Tablets / Laptops bem pequenos) */
+        @media (max-width: 1024px) {
+            .pauta-grid-header, .pauta-row {
+                /* Diminui o espaço das colunas técnicas e aumenta o da Pauta */
+                grid-template-columns: minmax(0, 3fr) minmax(0, 0.7fr) minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 0.8fr) minmax(0, 1fr) minmax(0, 1fr);
+                gap: 5px;
+            }
+            .comissao-name { font-size: 1.2rem; }
+            .col-sala, .libras-tag, .xconv-tag, .GC-tag, .GC-op { font-size: 1.1rem; }
+            #clock { font-size: 2rem; }
+        }
+
+        /* Telas até 768px (Smartphones na Vertical) */
+        @media (max-width: 768px) {
+            .screen-container { padding: 10px; }
+            
+            /* Reorganiza o cabeçalho em duas linhas */
+            header { flex-direction: column; align-items: center; gap: 10px; }
+            .header-right { width: 100%; justify-content: space-between; }
+            .stats-bar { justify-content: center; }
+
+            /* MÁGICA DO CELULAR: Esconde Sala, GC e DTV para focar no que importa */
+            /* Apenas: Pauta (Hora+Status+Nome), Libras e X-Conv vão aparecer */
+            .pauta-grid-header, .pauta-row {
+                grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
+            }
+            
+            /* Esconde as colunas 2, 5, 6 e 7 */
+            .pauta-grid-header div:nth-child(2), .pauta-row div:nth-child(2), /* Sala */
+            .pauta-grid-header div:nth-child(5), .pauta-row div:nth-child(5), /* GC */
+            .pauta-grid-header div:nth-child(6), .pauta-row div:nth-child(6), /* GC Op */
+            .pauta-grid-header div:nth-child(7), .pauta-row div:nth-child(7)  /* DTV */
+            { display: none; }
+
+            .comissao-name { font-size: 1.1rem; }
+            .col-hora { font-size: 1.1rem; }
+            .libras-tag, .xconv-tag { font-size: 1rem; padding: 2px 4px; }
+        }
+    </style>
+</head>
+
+<body>
+    
+    <div class="screen-container">
+        <header>
+            <div class="title-group">
+                <div class="stats-bar">
+                    <div class="stat-badge s-iniciada">NO AR: <span id="count-iniciada">0</span></div>
+                    <div class="stat-badge s-suspensa">SUSP: <span id="count-suspensa">0</span></div>
+                    <div class="stat-badge s-aguardando">AGUARD: <span id="count-aguardando">0</span></div>
+                    <div class="stat-badge s-encerrada">ENCER: <span id="count-encerrada">0</span></div>
+                </div>
+            </div>
+            <div id="clock">00:00:00</div>
+        </header>
+
+        <div id="viewport-scroll">
+            
+            <div class="pauta-grid-header">
+                <div style="text-align: left;">Pauta</div> 
+                <div>Sala</div>
+                <div>Libras</div>
+                <div>X-Conv</div>                
+                <div>GC</div>                
+                <div>GC Op</div>
+                <div>DTV</div>
+            </div>
+
+            <div id="corpo-scroll"></div>
+            
+        </div>
+    </div>
+
+    <div id="history-section">
+        <div class="history-title">Histórico de Sessões</div>
+        <div id="corpo-bottom"></div>
+    </div>
+
+    <script>
+        let scrollDir = 1; 
+        let isDragging = false;
+        let lastDataString = ""; 
+
+        function sincronizar() {
+            if (isDragging) return;
+
+            const rawData = localStorage.getItem('pauta_senado_v5') || '[]';
+            
+            if (rawData === lastDataString) return;
+            lastDataString = rawData; 
+            
+            let p = JSON.parse(rawData);
+            const cScroll = document.getElementById('corpo-scroll');
+            const cBot = document.getElementById('corpo-bottom'); 
+
+            cScroll.innerHTML = ''; cBot.innerHTML = '';
+
+            // ========================================================
+            // NOVA REGRA DE ORDENAÇÃO: 1º Libras | 2º Horário | 3º Status
+            // ========================================================
+            p.sort((a, b) => {
+                // 1. Número da LIBRAS (Ordem alfabética/numérica)
+                const libraA = a.libra || "";
+                const libraB = b.libra || "";
+                const compareLibra = libraA.localeCompare(libraB, undefined, {numeric: true});
+                if (compareLibra !== 0) return compareLibra;
+
+                // 2. HORA (Se a Libras for igual ou vazia)
+                const horaA = a.hora || "";
+                const horaB = b.hora || "";
+                const compareHora = horaA.localeCompare(horaB);
+                if (compareHora !== 0) return compareHora;
+
+                // 3. STATUS (Desempate final)
+                const pesoStatus = { 'iniciada': 1, 'iniciado': 1, 'no ar': 1, 'aguardando': 2, 'proxima': 2, 'suspensa': 3, 'suspenso': 3, 'encerrada': 4, 'cancelada': 5 };
+                const pA = pesoStatus[(a.status || '').toLowerCase()] || 99;
+                const pB = pesoStatus[(b.status || '').toLowerCase()] || 99;
+                return pA - pB;
+            });
+
+            // ========================================================
+            // RASTREADOR DE CONFLITOS (Números Repetidos)
+            // ========================================================
+            // Conta quantas vezes cada recurso aparece para pintar de amarelo
+            let freq = { sala: {}, libra: {}, xconv: {}, gc: {}, dtv: {} };
+            
+            p.forEach(i => {
+                const st = (i.status || '').toLowerCase();
+                // Só acusa conflito se a pauta estiver ativa
+                if (['iniciada', 'iniciado', 'no ar', 'suspensa', 'suspenso', 'aguardando', 'proxima'].includes(st)) {
+                    if (i.sala && i.sala !== "-" && i.sala !== "") freq.sala[i.sala] = (freq.sala[i.sala] || 0) + 1;
+                    if (i.libra && i.libra !== "-" && i.libra !== "") freq.libra[i.libra] = (freq.libra[i.libra] || 0) + 1;
+                    if (i.xconv && i.xconv !== "-" && i.xconv !== "") freq.xconv[i.xconv] = (freq.xconv[i.xconv] || 0) + 1;
+                    if (i.gc && i.gc !== "-" && i.gc !== "") freq.gc[i.gc] = (freq.gc[i.gc] || 0) + 1;
+                    if (i.dtv && i.dtv !== "-" && i.dtv !== "") freq.dtv[i.dtv] = (freq.dtv[i.dtv] || 0) + 1;
+                }
+            });
+
+            // Função que aplica a cor amarela se achar duplicidade
+            const checkDupe = (val, type) => {
+                if (!val || val.trim() === "" || val === "-") return '—'; // Se for vazio, põe um tracinho
+                if (freq[type] && freq[type][val] > 1) {
+                    return `conflito-amarelo`; // Retorna a classe CSS de alerta
+                }
+                return '';
+            };
+
+            const checkText = (val) => (val && val.trim() !== "") ? val : '—';
+            
+            let contadores = { iniciada: 0, suspensa: 0, aguardando: 0, encerrada: 0 };
+            const agora = new Date();
+
+            p.forEach(i => {
+                const row = document.createElement('div');
+                const rawSt = (i.status || 'aguardando').toLowerCase();
+                
+                let st = 'aguardando';
+                if (['iniciada', 'iniciado', 'no ar'].includes(rawSt)) st = 'iniciada';
+                else if (['suspensa', 'suspenso'].includes(rawSt)) st = 'suspensa';
+                else if (['encerrada', 'encerrado'].includes(rawSt)) st = 'encerrada';
+                else if (['cancelada', 'cancelado'].includes(rawSt)) st = 'cancelada';
+                
+                if (st === 'iniciada') contadores.iniciada++;
+                else if (st === 'suspensa') contadores.suspensa++;
+                else if (st === 'aguardando' || rawSt === 'proxima' || rawSt === 'próxima') contadores.aguardando++;
+                else contadores.encerrada++;
+
+                let classeUrgente = '';
+                if (st === 'aguardando') {
+                    const [h, m] = i.hora.split(':').map(Number);
+                    const horaPauta = new Date();
+                    horaPauta.setHours(h, m, 0);
+                    const diffMin = Math.floor((horaPauta - agora) / 60000);
+                    if (diffMin <= 5) { classeUrgente = 'urgente'; }
+                }
+
+                row.className = `pauta-row status-${st} ${classeUrgente}`;
+                
+                // Monta o Card HTML (Aplicando as tags e checando as duplicidades)
+                row.innerHTML = `
+                    <div class="col-main">
+                        <div class="col-hora">${i.hora}</div>
+                        <div class="status-dot-wrapper"><span class="status-dot" title="${st}"></span></div>
+                        <div class="comissao-name" title="${i.comissao}">${i.comissao}</div>
+                    </div>
+                    
+                    <div class="col-sala ${checkDupe(i.sala, 'sala')}">${checkText(i.sala)}</div>
+                    
+                    <div class="tech-data">
+                        <span class="libras-tag ${checkDupe(i.libra, 'libra')}">${checkText(i.libra)}</span>
+                    </div>
+                    
+                    <div class="tech-data">
+                        <span class="xconv-tag ${checkDupe(i.xconv, 'xconv')}">${checkText(i.xconv)}</span>
+                    </div>
+                    
+                    <div class="tech-data">
+                        <span class="GC-tag ${checkDupe(i.gc, 'gc')}">${checkText(i.gc)}</span>
+                    </div>
+                    
+                    <div class="tech-data">
+                        <span class="GC-op">${checkText(i.gcop)}</span>
+                    </div>
+                    
+                    <div class="tech-data ${checkDupe(i.dtv, 'dtv')}">${checkText(i.dtv)}</div>
+                `;
+
+                // Como a prioridade agora não é o status, tudo que for ativo (iniciada, aguardando, suspensa)
+                // vai para a mesma lista principal (corpo-scroll) para manter a ordem da Libras -> Hora visualmente!
+                if (st === 'encerrada' || st === 'cancelada') {
+                    cBot.appendChild(row); 
+                } else {
+                    cScroll.appendChild(row); 
+                }
+            });
+
+            document.getElementById('count-iniciada').innerText = contadores.iniciada;
+            document.getElementById('count-suspensa').innerText = contadores.suspensa;
+            document.getElementById('count-aguardando').innerText = contadores.aguardando;
+            document.getElementById('count-encerrada').innerText = contadores.encerrada;
+
+            verificarUrgenciaLocal();
+        }
+
+        function verificarUrgenciaLocal() {
+            const agora = new Date();
+            document.querySelectorAll('.pauta-row.status-aguardando').forEach(row => {
+                const horaStr = row.querySelector('.col-hora').innerText;
+                const [h, m] = horaStr.split(':').map(Number);
+                const horaPauta = new Date();
+                horaPauta.setHours(h, m, 0);
+                
+                const diffMin = Math.floor((horaPauta - agora) / 60000);
+                
+                if (diffMin <= 5 && diffMin >= -60) {
+                    row.classList.add('urgente');
+                } else {
+                    row.classList.remove('urgente');
+                }
+            });
+        }
+
+        function autoScroll() {
+            if (isDragging) return;
+            const container = document.getElementById('viewport-scroll');
+            if (localStorage.getItem('tv_scroll_active') === 'false') return;
+            
+            const maxScroll = container.scrollHeight - container.clientHeight;
+            if (maxScroll <= 0) return; 
+
+            container.scrollTop += 0.8 * scrollDir;
+            if (container.scrollTop >= maxScroll) scrollDir = -1;
+            if (container.scrollTop <= 0) scrollDir = 1;
+        }
+
+        const dragOptions = { 
+            animation: 150, 
+            ghostClass: 'sortable-ghost', 
+            onStart: () => isDragging = true, 
+            onEnd: () => {
+                isDragging = false;
+                lastDataString = localStorage.getItem('pauta_senado_v5') || '[]';
+            }
+        };
+        
+        Sortable.create(document.getElementById('corpo-scroll'), dragOptions);
+        Sortable.create(document.getElementById('corpo-bottom'), dragOptions);
+
+        setInterval(() => { 
+            document.getElementById('clock').innerText = new Date().toLocaleTimeString('pt-BR'); 
+            if (!isDragging) {
+                verificarUrgenciaLocal();
+            }
+        }, 1000);
+
+        setInterval(sincronizar, 1000);
+        setInterval(autoScroll, 30);
+        window.onload = sincronizar;
+    </script>
+</body>
+</html>
