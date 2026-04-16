@@ -334,9 +334,6 @@
         <div id="corpo-bottom"></div>
     </div>
 
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
@@ -355,124 +352,116 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database().ref('pauta_tv_senado');
 
-    let scrollDir = 1; 
-    let isDragging = false;
+    let scrollDirs = { 'scroll-iniciada': 1, 'scroll-suspensa': 1, 'scroll-aguardando': 1 };
+    let lastDataHash = "";
 
-    // 2. ESCUTA A NUVEM
+    // 2. ESCUTA A NUVEM EM TEMPO REAL
     db.on('value', (snapshot) => {
-        if (isDragging) return; 
         const p = snapshot.val() || [];
         renderizarMonitor(p);
     });
 
-    setInterval(() => { 
-        document.getElementById('clock').innerText = new Date().toLocaleTimeString('pt-BR'); 
-        if (!isDragging) verificarUrgenciaLocal();
+    // Atualiza o relógio a cada segundo
+    setInterval(() => {
+        document.getElementById('clock').innerText = new Date().toLocaleTimeString('pt-BR');
     }, 1000);
 
-    // 3. RENDERIZAÇÃO
+    // 3. FUNÇÃO DE RENDERIZAÇÃO
     function renderizarMonitor(p) {
-        const cScroll = document.getElementById('corpo-scroll');
-        const cBot = document.getElementById('corpo-bottom'); 
-        cScroll.innerHTML = ''; cBot.innerHTML = '';
+        const grids = {
+            'iniciada': document.getElementById('scroll-iniciada'),
+            'suspensa': document.getElementById('scroll-suspensa'),
+            'encerrada': document.getElementById('scroll-encerrada'),
+            'aguardando': document.getElementById('scroll-aguardando')
+        };
 
+        // Limpa tudo antes de reconstruir
+        Object.values(grids).forEach(g => g.innerHTML = '');
+        
+        // Ordenação por Hora
         let pCopia = [...p];
-        pCopia.sort((a, b) => {
-            const libraA = a.libra || "";
-            const libraB = b.libra || "";
-            const compareLibra = libraA.localeCompare(libraB, undefined, {numeric: true});
-            if (compareLibra !== 0) return compareLibra;
-            return (a.hora || "").localeCompare(b.hora || "");
-        });
+        pCopia.sort((a, b) => a.hora.localeCompare(b.hora));
 
-        let freq = { sala: {}, libra: {}, xconv: {}, gc: {}, dtv: {} };
-        pCopia.forEach(i => {
-            const st = (i.status || '').toLowerCase();
-            if (['iniciada', 'iniciado', 'no ar', 'suspensa', 'suspenso', 'aguardando', 'proxima'].includes(st)) {
-                if (i.sala && i.sala !== "-") freq.sala[i.sala] = (freq.sala[i.sala] || 0) + 1;
-                if (i.libra && i.libra !== "-") freq.libra[i.libra] = (freq.libra[i.libra] || 0) + 1;
-                if (i.xconv && i.xconv !== "-") freq.xconv[i.xconv] = (freq.xconv[i.xconv] || 0) + 1;
-                if (i.gc && i.gc !== "-") freq.gc[i.gc] = (freq.gc[i.gc] || 0) + 1;
-                if (i.dtv && i.dtv !== "-") freq.dtv[i.dtv] = (freq.dtv[i.dtv] || 0) + 1;
-            }
-        });
-
-        const checkDupe = (val, type) => (freq[type] && freq[type][val] > 1) ? `conflito-amarelo` : '';
-        const checkText = (val) => (val && val.trim() !== "") ? val : '—';
-        
-        let contadores = { iniciada: 0, suspensa: 0, aguardando: 0, encerrada: 0 };
-        const agora = new Date();
+        const check = (val) => (val && val.trim() !== "") ? `<span class="info-val">${val}</span>` : `<span class="info-val val-pendente">---</span>`;
 
         pCopia.forEach(i => {
-            const row = document.createElement('div');
             const rawSt = (i.status || 'aguardando').toLowerCase();
-            let st = (['iniciada', 'iniciado', 'no ar'].includes(rawSt)) ? 'iniciada' : 
-                     (['suspensa', 'suspenso'].includes(rawSt)) ? 'suspensa' : 
-                     (['encerrada', 'cancelada'].includes(rawSt)) ? 'encerrada' : 'aguardando';
+            let st = 'encerrada';
+            if (['iniciada', 'iniciado', 'no ar'].includes(rawSt)) st = 'iniciada';
+            else if (['suspensa', 'suspenso'].includes(rawSt)) st = 'suspensa';
+            else if (['aguardando', 'proxima', 'próxima'].includes(rawSt)) st = 'aguardando';
             
-            contadores[st === 'encerrada' ? 'encerrada' : st]++;
-
-            let classeUrgente = '';
-            if (st === 'aguardando') {
-                const [h, m] = i.hora.split(':').map(Number);
-                const hP = new Date(); hP.setHours(h, m, 0);
-                if ((hP - agora) / 60000 <= 5) classeUrgente = 'urgente';
-            }
-
-            row.className = `pauta-row status-${st} ${classeUrgente}`;
-            row.innerHTML = `
-                <div class="col-main">
-                    <div class="col-hora">${i.hora}</div>
-                    <div class="status-dot-wrapper"><span class="status-dot"></span></div>
-                    <div class="comissao-name">${i.comissao}</div>
+            const card = document.createElement('div');
+            const [h, m] = i.hora.split(':').map(Number);
+            const agora = new Date();
+            const pHora = new Date(); pHora.setHours(h,m,0);
+            const diffMin = Math.floor((pHora - agora) / 60000);
+            
+            let classeUrgente = (st === 'aguardando' && diffMin <= 10 && diffMin > -10) ? 'urgente' : '';
+            
+            card.className = `pauta-card status-${st} ${classeUrgente}`;
+            card.innerHTML = `
+                <div class="card-top">
+                    <div class="col-hora">${i.hora} <span class="xconv-tag">${(i.xconv && i.xconv.trim() !== "") ? i.xconv : ''}</span></div>
                 </div>
-                <div class="col-sala ${checkDupe(i.sala, 'sala')}">${checkText(i.sala)}</div>
-                <div class="tech-data"><span class="libras-tag ${checkDupe(i.libra, 'libra')}">${checkText(i.libra)}</span></div>
-                <div class="tech-data"><span class="xconv-tag ${checkDupe(i.xconv, 'xconv')}">${checkText(i.xconv)}</span></div>
-                <div class="tech-data"><span class="GC-tag ${checkDupe(i.gc, 'gc')}">${checkText(i.gc)}</span></div>
-                <div class="tech-data"><span class="GC-op">${checkText(i.gcop)}</span></div>
-                <div class="tech-data ${checkDupe(i.dtv, 'dtv')}">${checkText(i.dtv)}</div>
+                <div class="comissao-name" title="${i.comissao}">${i.comissao}</div>
+                <div class="card-pills">
+                    <div class="pill"><span class="pill-label">SAL</span>${check(i.sala)}</div>
+                    <div class="pill"><span class="pill-label">LIB</span><span class="info-val">${i.libra || '-'}</span></div>
+                    <div class="pill"><span class="pill-label">GC</span>${check(i.gc)}</div>
+                    <div class="pill"><span class="pill-label">OP</span>${check(i.gcop)}</div>
+                    <div class="pill"><span class="pill-label">DTV</span>${check(i.dtv)}</div>
+                </div>
             `;
-
-            if (st === 'encerrada') cBot.appendChild(row); 
-            else cScroll.appendChild(row); 
+            grids[st].appendChild(card);
         });
 
-        document.getElementById('count-iniciada').innerText = contadores.iniciada;
-        document.getElementById('count-suspensa').innerText = contadores.suspensa;
-        document.getElementById('count-aguardando').innerText = contadores.aguardando;
-        document.getElementById('count-encerrada').innerText = contadores.encerrada;
+        // 4. LÓGICA DE EXIBIÇÃO DE GRUPOS (LIDANDO COM ESPAÇO)
+        ['iniciada', 'suspensa', 'encerrada'].forEach(id => {
+            const wrapper = document.getElementById('group-' + id);
+            if (grids[id].children.length === 0) {
+                wrapper.style.display = 'none';
+                wrapper.style.flex = "0 0 0"; // Retira o peso do flex se estiver vazio
+            } else {
+                wrapper.style.display = 'flex';
+                // Se for Encerrada, ela não tenta crescer (fica no tamanho do conteúdo)
+                // Se for Iniciada ou Suspensa, elas dividem o espaço principal
+                if (id === 'encerrada') {
+                    wrapper.style.flex = "0 1 auto"; 
+                } else {
+                    wrapper.style.flex = "1 1 auto";
+                }
+            }
+        });
+
+        const sidebar = document.getElementById('sidebar-aguardando');
+        if (grids['aguardando'].children.length === 0) sidebar.style.display = 'none';
+        else sidebar.style.display = 'flex';
     }
 
-    // 4. AUTO-SCROLL AJUSTADO (SÓ PARA O CONTEÚDO ATIVO)
+    // 5. AUTO-SCROLL SELETIVO (REMOVIDO DAS ENCERRADAS)
     function autoScroll() {
-        if (isDragging) return;
+        if (localStorage.getItem('tv_scroll_active') === 'false') return;
         
-        // Agora focamos apenas no viewport-scroll (Ativas/Aguardando)
-        // O corpo-bottom (Encerradas) não entra mais nesta lógica
-        const container = document.getElementById('viewport-scroll');
-        if (!container || localStorage.getItem('tv_scroll_active') === 'false') return;
-        
-        const maxScroll = container.scrollHeight - container.clientHeight;
-        if (maxScroll <= 0) return; 
-
-        container.scrollTop += 0.8 * scrollDir;
-        if (container.scrollTop >= maxScroll) scrollDir = -1;
-        if (container.scrollTop <= 0) scrollDir = 1;
-    }
-
-    function verificarUrgenciaLocal() {
-        const agora = new Date();
-        document.querySelectorAll('.pauta-row.status-aguardando').forEach(row => {
-            const [h, m] = row.querySelector('.col-hora').innerText.split(':').map(Number);
-            const hP = new Date(); hP.setHours(h, m, 0);
-            const diff = (hP - agora) / 60000;
-            if (diff <= 5 && diff >= -60) row.classList.add('urgente');
-            else row.classList.remove('urgente');
+        // Lista apenas os IDs das áreas que DEVEM rodar (Encerrada ficou de fora)
+        ['scroll-iniciada', 'scroll-suspensa', 'scroll-aguardando'].forEach(id => {
+            const el = document.getElementById(id);
+            // Verifica se o elemento existe e se o pai dele está visível
+            if (!el || (id !== 'scroll-aguardando' && document.getElementById(id.replace('scroll', 'group')).style.display === 'none')) return;
+            if (id === 'scroll-aguardando' && document.getElementById('sidebar-aguardando').style.display === 'none') return;
+            
+            const max = el.scrollHeight - el.clientHeight;
+            if (max > 10) {
+                el.scrollTop += 1.6 * (scrollDirs[id] || 1);
+                if (el.scrollTop >= max - 1) scrollDirs[id] = -1;
+                if (el.scrollTop <= 0) scrollDirs[id] = 1;
+            } else {
+                el.scrollTop = 0; 
+            }
         });
     }
 
-    setInterval(autoScroll, 30);
+    setInterval(autoScroll, 40);
 </script>
 </body>
 </html>
