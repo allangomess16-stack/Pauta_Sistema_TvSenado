@@ -334,11 +334,14 @@
         <div id="corpo-bottom"></div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
 <script>
-    // 1. AS SUAS CHAVES REAIS DO FIREBASE
+    // 1. CONFIGURAÇÃO FIREBASE
     const firebaseConfig = {
         apiKey: "AIzaSyCRZXbRFqotcxdPAl6ptg06jDf_GpW2De8",
         authDomain: "sistema-tvsenado.firebaseapp.com",
@@ -349,78 +352,52 @@
         appId: "1:895965318952:web:3eab09f06ce06d76674a1d"
     };
 
-    // 2. INICIALIZAÇÃO DA NUVEM
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database().ref('pauta_tv_senado');
 
     let scrollDir = 1; 
     let isDragging = false;
 
-    // 3. ESCUTA A NUVEM EM TEMPO REAL (Fim do localStorage!)
+    // 2. ESCUTA A NUVEM
     db.on('value', (snapshot) => {
-        // Se o operador estiver arrastando um card (Sortable), não atualiza a tela pra não bugar a mão dele
         if (isDragging) return; 
         const p = snapshot.val() || [];
         renderizarMonitor(p);
     });
 
-    // Atualiza o relógio a cada segundo e checa se alguma pauta está atrasada
     setInterval(() => { 
         document.getElementById('clock').innerText = new Date().toLocaleTimeString('pt-BR'); 
-        if (!isDragging) {
-            verificarUrgenciaLocal();
-        }
+        if (!isDragging) verificarUrgenciaLocal();
     }, 1000);
 
-    // =====================================================================
-    // RENDERIZAÇÃO E LÓGICA VISUAL
-    // =====================================================================
-
+    // 3. RENDERIZAÇÃO
     function renderizarMonitor(p) {
         const cScroll = document.getElementById('corpo-scroll');
         const cBot = document.getElementById('corpo-bottom'); 
-
         cScroll.innerHTML = ''; cBot.innerHTML = '';
 
-        // ORDENAÇÃO: 1º Libras | 2º Horário | 3º Status
         let pCopia = [...p];
         pCopia.sort((a, b) => {
             const libraA = a.libra || "";
             const libraB = b.libra || "";
             const compareLibra = libraA.localeCompare(libraB, undefined, {numeric: true});
             if (compareLibra !== 0) return compareLibra;
-
-            const horaA = a.hora || "";
-            const horaB = b.hora || "";
-            const compareHora = horaA.localeCompare(horaB);
-            if (compareHora !== 0) return compareHora;
-
-            const pesoStatus = { 'iniciada': 1, 'iniciado': 1, 'no ar': 1, 'aguardando': 2, 'proxima': 2, 'suspensa': 3, 'suspenso': 3, 'encerrada': 4, 'cancelada': 5 };
-            const pA = pesoStatus[(a.status || '').toLowerCase()] || 99;
-            const pB = pesoStatus[(b.status || '').toLowerCase()] || 99;
-            return pA - pB;
+            return (a.hora || "").localeCompare(b.hora || "");
         });
 
-        // RASTREADOR DE CONFLITOS (Números Repetidos para fundo Amarelo)
         let freq = { sala: {}, libra: {}, xconv: {}, gc: {}, dtv: {} };
-        
         pCopia.forEach(i => {
             const st = (i.status || '').toLowerCase();
             if (['iniciada', 'iniciado', 'no ar', 'suspensa', 'suspenso', 'aguardando', 'proxima'].includes(st)) {
-                if (i.sala && i.sala !== "-" && i.sala !== "") freq.sala[i.sala] = (freq.sala[i.sala] || 0) + 1;
-                if (i.libra && i.libra !== "-" && i.libra !== "") freq.libra[i.libra] = (freq.libra[i.libra] || 0) + 1;
-                if (i.xconv && i.xconv !== "-" && i.xconv !== "") freq.xconv[i.xconv] = (freq.xconv[i.xconv] || 0) + 1;
-                if (i.gc && i.gc !== "-" && i.gc !== "") freq.gc[i.gc] = (freq.gc[i.gc] || 0) + 1;
-                if (i.dtv && i.dtv !== "-" && i.dtv !== "") freq.dtv[i.dtv] = (freq.dtv[i.dtv] || 0) + 1;
+                if (i.sala && i.sala !== "-") freq.sala[i.sala] = (freq.sala[i.sala] || 0) + 1;
+                if (i.libra && i.libra !== "-") freq.libra[i.libra] = (freq.libra[i.libra] || 0) + 1;
+                if (i.xconv && i.xconv !== "-") freq.xconv[i.xconv] = (freq.xconv[i.xconv] || 0) + 1;
+                if (i.gc && i.gc !== "-") freq.gc[i.gc] = (freq.gc[i.gc] || 0) + 1;
+                if (i.dtv && i.dtv !== "-") freq.dtv[i.dtv] = (freq.dtv[i.dtv] || 0) + 1;
             }
         });
 
-        const checkDupe = (val, type) => {
-            if (!val || val.trim() === "" || val === "-") return '—';
-            if (freq[type] && freq[type][val] > 1) return `conflito-amarelo`;
-            return '';
-        };
-
+        const checkDupe = (val, type) => (freq[type] && freq[type][val] > 1) ? `conflito-amarelo` : '';
         const checkText = (val) => (val && val.trim() !== "") ? val : '—';
         
         let contadores = { iniciada: 0, suspensa: 0, aguardando: 0, encerrada: 0 };
@@ -429,102 +406,52 @@
         pCopia.forEach(i => {
             const row = document.createElement('div');
             const rawSt = (i.status || 'aguardando').toLowerCase();
+            let st = (['iniciada', 'iniciado', 'no ar'].includes(rawSt)) ? 'iniciada' : 
+                     (['suspensa', 'suspenso'].includes(rawSt)) ? 'suspensa' : 
+                     (['encerrada', 'cancelada'].includes(rawSt)) ? 'encerrada' : 'aguardando';
             
-            let st = 'aguardando';
-            if (['iniciada', 'iniciado', 'no ar'].includes(rawSt)) st = 'iniciada';
-            else if (['suspensa', 'suspenso'].includes(rawSt)) st = 'suspensa';
-            else if (['encerrada', 'encerrado'].includes(rawSt)) st = 'encerrada';
-            else if (['cancelada', 'cancelado'].includes(rawSt)) st = 'cancelada';
-            
-            if (st === 'iniciada') contadores.iniciada++;
-            else if (st === 'suspensa') contadores.suspensa++;
-            else if (st === 'aguardando' || rawSt === 'proxima' || rawSt === 'próxima') contadores.aguardando++;
-            else contadores.encerrada++;
+            contadores[st === 'encerrada' ? 'encerrada' : st]++;
 
             let classeUrgente = '';
             if (st === 'aguardando') {
                 const [h, m] = i.hora.split(':').map(Number);
-                const horaPauta = new Date();
-                horaPauta.setHours(h, m, 0);
-                const diffMin = Math.floor((horaPauta - agora) / 60000);
-                if (diffMin <= 5) { classeUrgente = 'urgente'; }
+                const hP = new Date(); hP.setHours(h, m, 0);
+                if ((hP - agora) / 60000 <= 5) classeUrgente = 'urgente';
             }
 
             row.className = `pauta-row status-${st} ${classeUrgente}`;
-            
             row.innerHTML = `
                 <div class="col-main">
                     <div class="col-hora">${i.hora}</div>
-                    <div class="status-dot-wrapper"><span class="status-dot" title="${st}"></span></div>
-                    <div class="comissao-name" title="${i.comissao}">${i.comissao}</div>
+                    <div class="status-dot-wrapper"><span class="status-dot"></span></div>
+                    <div class="comissao-name">${i.comissao}</div>
                 </div>
-                
                 <div class="col-sala ${checkDupe(i.sala, 'sala')}">${checkText(i.sala)}</div>
-                
-                <div class="tech-data">
-                    <span class="libras-tag ${checkDupe(i.libra, 'libra')}">${checkText(i.libra)}</span>
-                </div>
-                
-                <div class="tech-data">
-                    <span class="xconv-tag ${checkDupe(i.xconv, 'xconv')}">${checkText(i.xconv)}</span>
-                </div>
-                
-                <div class="tech-data">
-                    <span class="GC-tag ${checkDupe(i.gc, 'gc')}">${checkText(i.gc)}</span>
-                </div>
-                
-                <div class="tech-data">
-                    <span class="GC-op">${checkText(i.gcop)}</span>
-                </div>
-                
+                <div class="tech-data"><span class="libras-tag ${checkDupe(i.libra, 'libra')}">${checkText(i.libra)}</span></div>
+                <div class="tech-data"><span class="xconv-tag ${checkDupe(i.xconv, 'xconv')}">${checkText(i.xconv)}</span></div>
+                <div class="tech-data"><span class="GC-tag ${checkDupe(i.gc, 'gc')}">${checkText(i.gc)}</span></div>
+                <div class="tech-data"><span class="GC-op">${checkText(i.gcop)}</span></div>
                 <div class="tech-data ${checkDupe(i.dtv, 'dtv')}">${checkText(i.dtv)}</div>
             `;
 
-            if (st === 'encerrada' || st === 'cancelada') {
-                cBot.appendChild(row); 
-            } else {
-                cScroll.appendChild(row); 
-            }
+            if (st === 'encerrada') cBot.appendChild(row); 
+            else cScroll.appendChild(row); 
         });
 
-        // Atualiza os contadores no topo
-        if (document.getElementById('count-iniciada')) document.getElementById('count-iniciada').innerText = contadores.iniciada;
-        if (document.getElementById('count-suspensa')) document.getElementById('count-suspensa').innerText = contadores.suspensa;
-        if (document.getElementById('count-aguardando')) document.getElementById('count-aguardando').innerText = contadores.aguardando;
-        if (document.getElementById('count-encerrada')) document.getElementById('count-encerrada').innerText = contadores.encerrada;
-
-        verificarUrgenciaLocal();
+        document.getElementById('count-iniciada').innerText = contadores.iniciada;
+        document.getElementById('count-suspensa').innerText = contadores.suspensa;
+        document.getElementById('count-aguardando').innerText = contadores.aguardando;
+        document.getElementById('count-encerrada').innerText = contadores.encerrada;
     }
 
-    // =====================================================================
-    // UTILITÁRIOS (Urgência e Scroll)
-    // =====================================================================
-
-    function verificarUrgenciaLocal() {
-        const agora = new Date();
-        document.querySelectorAll('.pauta-row.status-aguardando').forEach(row => {
-            const horaStr = row.querySelector('.col-hora').innerText;
-            const [h, m] = horaStr.split(':').map(Number);
-            const horaPauta = new Date();
-            horaPauta.setHours(h, m, 0);
-            
-            const diffMin = Math.floor((horaPauta - agora) / 60000);
-            
-            if (diffMin <= 5 && diffMin >= -60) {
-                row.classList.add('urgente');
-            } else {
-                row.classList.remove('urgente');
-            }
-        });
-    }
-
+    // 4. AUTO-SCROLL AJUSTADO (SÓ PARA O CONTEÚDO ATIVO)
     function autoScroll() {
         if (isDragging) return;
-        const container = document.getElementById('viewport-scroll');
-        if (!container) return; 
         
-        // Mantém a leitura do localStorage APENAS para o comando de pausar a tela na TV física
-        if (localStorage.getItem('tv_scroll_active') === 'false') return;
+        // Agora focamos apenas no viewport-scroll (Ativas/Aguardando)
+        // O corpo-bottom (Encerradas) não entra mais nesta lógica
+        const container = document.getElementById('viewport-scroll');
+        if (!container || localStorage.getItem('tv_scroll_active') === 'false') return;
         
         const maxScroll = container.scrollHeight - container.clientHeight;
         if (maxScroll <= 0) return; 
@@ -534,19 +461,15 @@
         if (container.scrollTop <= 0) scrollDir = 1;
     }
 
-    // =====================================================================
-    // DRAG AND DROP (Sortable.js)
-    // =====================================================================
-    if(typeof Sortable !== 'undefined') {
-        const dragOptions = { 
-            animation: 150, 
-            ghostClass: 'sortable-ghost', 
-            onStart: () => isDragging = true, 
-            onEnd: () => isDragging = false
-        };
-        
-        if(document.getElementById('corpo-scroll')) Sortable.create(document.getElementById('corpo-scroll'), dragOptions);
-        if(document.getElementById('corpo-bottom')) Sortable.create(document.getElementById('corpo-bottom'), dragOptions);
+    function verificarUrgenciaLocal() {
+        const agora = new Date();
+        document.querySelectorAll('.pauta-row.status-aguardando').forEach(row => {
+            const [h, m] = row.querySelector('.col-hora').innerText.split(':').map(Number);
+            const hP = new Date(); hP.setHours(h, m, 0);
+            const diff = (hP - agora) / 60000;
+            if (diff <= 5 && diff >= -60) row.classList.add('urgente');
+            else row.classList.remove('urgente');
+        });
     }
 
     setInterval(autoScroll, 30);
