@@ -199,94 +199,105 @@
         </aside>
     </div>
 
-    <script>
-        // O autoscroll foi completamente removido. Tela 100% controlada pelo dedo do operador.
-        let lastDataHash = "";
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
-        function sincronizar() {
-            const rawData = localStorage.getItem('pauta_senado_v5') || '[]';
-            
-            // Só atualiza o relógio se nada na pauta mudou (evita tela piscando)
-            if (rawData === lastDataHash) {
-                document.getElementById('clock').innerText = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-                return;
-            }
-            lastDataHash = rawData;
-            let p = JSON.parse(rawData);
-            
-            const grids = {
-                'iniciada': document.getElementById('scroll-iniciada'),
-                'suspensa': document.getElementById('scroll-suspensa'),
-                'encerrada': document.getElementById('scroll-encerrada'),
-                'aguardando': document.getElementById('scroll-aguardando')
-            };
+<script>
+    // 2. CONFIGURAÇÃO COM AS SUAS CHAVES REAIS
+    const firebaseConfig = {
+        apiKey: "AIzaSyCRZXbRFqotcxdPAl6ptg06jDf_GpW2De8",
+        authDomain: "sistema-tvsenado.firebaseapp.com",
+        databaseURL: "https://sistema-tvsenado-default-rtdb.firebaseio.com",
+        projectId: "sistema-tvsenado",
+        storageBucket: "sistema-tvsenado.firebasestorage.app",
+        messagingSenderId: "895965318952",
+        appId: "1:895965318952:web:3eab09f06ce06d76674a1d"
+    };
 
-            Object.values(grids).forEach(g => g.innerHTML = '');
-            p.sort((a, b) => a.hora.localeCompare(b.hora));
+    // 3. INICIALIZANDO O FIREBASE MOBILE
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database().ref('pauta_tv_senado');
 
-            const check = (val) => (val && val.trim() !== "") ? `<span class="info-val">${val}</span>` : `<span class="info-val val-pendente">---</span>`;
+    let lastDataHash = "";
 
-            p.forEach(i => {
-                const rawSt = (i.status || 'aguardando').toLowerCase();
-                let st = 'encerrada';
-                if (['iniciada', 'iniciado', 'no ar'].includes(rawSt)) st = 'iniciada';
-                else if (['suspensa', 'suspenso'].includes(rawSt)) st = 'suspensa';
-                else if (['aguardando', 'proxima', 'próxima'].includes(rawSt)) st = 'aguardando';
-                
-                const card = document.createElement('div');
-                const [h, m] = i.hora.split(':').map(Number);
-                const diffMin = Math.floor((new Date().setHours(h,m,0) - new Date()) / 60000);
-                
-                // Urgente se a pauta estiver aguardando e faltar 5 min (ou já estiver atrasada)
-                let classeUrgente = (st === 'aguardando' && diffMin <= 5 && diffMin > -120) ? 'urgente' : '';
-                
-                card.className = `pauta-card status-${st} ${classeUrgente}`;
-                
-                card.innerHTML = `
-                    <div class="card-top">
-                        <div class="col-hora">${i.hora} <span class="xconv-tag">${(i.xconv && i.xconv.trim() !== "") ? i.xconv : ''}</span></div>
-                    </div>
-                    <div class="comissao-name" title="${i.comissao}">${i.comissao}</div>
-                    
-                    <div class="card-pills">
-                        <div class="pill"><span class="pill-label">SAL</span>${check(i.sala)}</div>
-                        <div class="pill"><span class="pill-label">LIB</span><span class="info-val">${i.libra || '-'}</span></div>
-                        <div class="pill"><span class="pill-label">GC</span>${check(i.gc)}</div>
-                        <div class="pill"><span class="pill-label">OP</span>${check(i.gcop)}</div>
-                        <div class="pill"><span class="pill-label">DTV</span>${check(i.dtv)}</div>
-                    </div>
-                `;
+    // 4. ESCUTANDO A NUVEM EM TEMPO REAL (Fim do localStorage)
+    db.on('value', (snapshot) => {
+        const pautaNuvem = snapshot.val() || [];
+        renderizarMonitor(pautaNuvem);
+    });
 
-                grids[st].appendChild(card);
-            });
+    // Mantém o relógio rodando a cada segundo
+    setInterval(() => {
+        document.getElementById('clock').innerText = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    }, 1000);
 
-            // Mostra ou oculta os fundos dependendo se tem pauta dentro
-            ['iniciada', 'suspensa', 'encerrada'].forEach(id => {
-                const wrapper = document.getElementById('group-' + id);
-                if (grids[id].children.length === 0) wrapper.style.display = 'none';
-                else wrapper.style.display = 'flex';
-            });
+    // 5. FUNÇÃO DE RENDERIZAÇÃO ADAPTADA
+    function renderizarMonitor(p) {
+        const grids = {
+            'iniciada': document.getElementById('scroll-iniciada'),
+            'suspensa': document.getElementById('scroll-suspensa'),
+            'encerrada': document.getElementById('scroll-encerrada'),
+            'aguardando': document.getElementById('scroll-aguardando')
+        };
 
-            // Idem para a barra inferior de Aguardando
-            const sidebar = document.getElementById('sidebar-aguardando');
-            if (grids['aguardando'].children.length === 0) sidebar.style.display = 'none';
-            else sidebar.style.display = 'flex';
-        }
-
-        // Sincroniza via memória a cada 1 segundo
-        setInterval(sincronizar, 1000);
+        // Limpa as áreas antes de desenhar
+        Object.values(grids).forEach(g => g.innerHTML = '');
         
-        // Dispara assim que abrir a tela
-        window.onload = sincronizar;
-        const firebaseConfig = {
-  apiKey: "AIzaSyCRZXbRFqotcxdPAl6ptg06jDf_GpW2De8",
-  authDomain: "sistema-tvsenado.firebaseapp.com",
-  databaseURL: "https://sistema-tvsenado-default-rtdb.firebaseio.com",
-  projectId: "sistema-tvsenado",
-  storageBucket: "sistema-tvsenado.firebasestorage.app",
-  messagingSenderId: "895965318952",
-  appId: "1:895965318952:web:3eab09f06ce06d76674a1d"
-};
-    </script>
+        // Ordena os dados da nuvem por Hora
+        let pCopia = [...p];
+        pCopia.sort((a, b) => a.hora.localeCompare(b.hora));
+
+        const check = (val) => (val && val.trim() !== "") ? `<span class="info-val">${val}</span>` : `<span class="info-val val-pendente">---</span>`;
+
+        pCopia.forEach(i => {
+            const rawSt = (i.status || 'aguardando').toLowerCase();
+            let st = 'encerrada';
+            if (['iniciada', 'iniciado', 'no ar'].includes(rawSt)) st = 'iniciada';
+            else if (['suspensa', 'suspenso'].includes(rawSt)) st = 'suspensa';
+            else if (['aguardando', 'proxima', 'próxima'].includes(rawSt)) st = 'aguardando';
+            
+            const card = document.createElement('div');
+            const [h, m] = i.hora.split(':').map(Number);
+            const agora = new Date();
+            const pautaHora = new Date();
+            pautaHora.setHours(h, m, 0);
+            
+            const diffMin = Math.floor((pautaHora - agora) / 60000);
+            
+            // Lógica de Urgência: Se faltar 5 min ou estiver atrasada até 2 horas
+            let classeUrgente = (st === 'aguardando' && diffMin <= 5 && diffMin > -120) ? 'urgente' : '';
+            
+            card.className = `pauta-card status-${st} ${classeUrgente}`;
+            
+            card.innerHTML = `
+                <div class="card-top">
+                    <div class="col-hora">${i.hora} <span class="xconv-tag">${(i.xconv && i.xconv.trim() !== "") ? i.xconv : ''}</span></div>
+                </div>
+                <div class="comissao-name" title="${i.comissao}">${i.comissao}</div>
+                
+                <div class="card-pills">
+                    <div class="pill"><span class="pill-label">SAL</span>${check(i.sala)}</div>
+                    <div class="pill"><span class="pill-label">LIB</span><span class="info-val">${i.libra || '-'}</span></div>
+                    <div class="pill"><span class="pill-label">GC</span>${check(i.gc)}</div>
+                    <div class="pill"><span class="pill-label">OP</span>${check(i.gcop)}</div>
+                    <div class="pill"><span class="pill-label">DTV</span>${check(i.dtv)}</div>
+                </div>
+            `;
+
+            grids[st].appendChild(card);
+        });
+
+        // Mostra ou oculta as seções dependendo do conteúdo
+        ['iniciada', 'suspensa', 'encerrada'].forEach(id => {
+            const wrapper = document.getElementById('group-' + id);
+            if (grids[id].children.length === 0) wrapper.style.display = 'none';
+            else wrapper.style.display = 'flex';
+        });
+
+        const sidebar = document.getElementById('sidebar-aguardando');
+        if (grids['aguardando'].children.length === 0) sidebar.style.display = 'none';
+        else sidebar.style.display = 'flex';
+    }
+</script>
 </body>
 </html>

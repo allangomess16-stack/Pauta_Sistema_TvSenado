@@ -2,7 +2,8 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"> <title>CONTROLE MOBILE - TV SENADO</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"> 
+    <title>CONTROLE MOBILE - TV SENADO</title>
     <style>
         /* =====================================================================
            VARIÁVEIS GLOBAIS E BASE (OTIMIZADO PARA MOBILE)
@@ -22,15 +23,14 @@
             --status-cancelado: #ff6600; 
         }
         
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; } /* Remove o flash azul feio ao tocar em botões no celular */
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; } 
         
         body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; /* Fontes nativas de celular */
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
             background: var(--bg-body); 
             margin: 0; padding: 0; 
             color: var(--text-main);
             display: flex; flex-direction: column; 
-            /* No mobile, deixamos o body rolar naturalmente se a tela for pequena */
             min-height: 100vh; 
             overflow-x: hidden; 
         }
@@ -41,18 +41,18 @@
         .top-bar { 
             background: #0f172a; color: white; 
             padding: 12px 15px; 
-            display: flex; flex-direction: column; gap: 12px; /* Empilha o título e os botões */
+            display: flex; flex-direction: column; gap: 12px; 
             align-items: center; 
             box-shadow: 0 4px 10px rgba(0,0,0,0.15); 
-            position: sticky; top: 0; z-index: 50; /* Fica preso no topo ao rolar */
+            position: sticky; top: 0; z-index: 50; 
         }
         .top-bar h1 { margin: 0; font-size: 16px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: #e2e8f0; text-align: center; }
         .top-bar span { color: var(--accent-blue); }
         
         .screen-controls { display: flex; gap: 8px; width: 100%; justify-content: center; flex-wrap: wrap; }
-        .btn-screen { padding: 10px 15px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 12px; flex: 1; /* Botões esticam para preencher o espaço */ min-width: 80px; }
+        .btn-screen { padding: 10px 15px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 12px; flex: 1; min-width: 80px; }
         
-        .btn-clear-all { background: transparent; color: #ff4d4d; border: 1px solid #ff4d4d; flex: none; width: 100%; margin-bottom: 4px; } /* Botão de limpar ganha linha própria */
+        .btn-clear-all { background: transparent; color: #ff4d4d; border: 1px solid #ff4d4d; flex: none; width: 100%; margin-bottom: 4px; } 
         .btn-pause { background: #475569; color: white; }
         .btn-play { background: #10b981; color: white; }
 
@@ -70,7 +70,6 @@
         
         #alerta-sinal { display: none; background: #fee2e2; color: #b91c1c; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 12px; font-weight: bold; text-align: center; border: 1px solid #fca5a5; }
 
-        /* Tudo em 1 coluna */
         .form-grid { display: flex; flex-direction: column; gap: 12px; }
         
         .field { display: flex; flex-direction: column; }
@@ -80,16 +79,14 @@
         .input-hora-container input[type="text"] { flex: 1; padding-right: 40px; }
         .input-hora-container input[type="time"] { position: absolute; right: 5px; width: 30px; height: 30px; border: none; background: transparent; }
 
-        /* Inputs maiores para facilitar o toque no celular */
         input { 
             width: 100%; box-sizing: border-box; padding: 14px 12px; 
             border: 1px solid #cbd5e1; border-radius: 8px; 
-            font-size: 16px; /* Fonte maior (16px evita zoom automático no iPhone) */
+            font-size: 16px; 
             outline: none; background: #f8fafc; color: #0f172a; font-weight: 600; 
         }
         input:focus { border-color: var(--accent-blue); background: #fff; box-shadow: 0 0 0 3px rgba(0, 132, 255, 0.15); }
         
-        /* Botão "Lançar na TV" Gigante */
         .btn-container { margin-top: 10px; }
         .btn-add { 
             width: 100%; padding: 16px; border: none; border-radius: 8px; 
@@ -100,7 +97,7 @@
         .btn-edit-mode { background: #ffc107 !important; color: #000 !important; box-shadow: 0 4px 10px rgba(255, 193, 7, 0.3); }
 
         /* =====================================================================
-           A BARRA LATERAL / LISTA DE PAUTAS (Fica embaixo no mobile)
+           A BARRA LATERAL / LISTA DE PAUTAS
            ===================================================================== */
         .sidebar { 
             width: 100%; background: #fff; padding: 20px 15px; 
@@ -123,12 +120,8 @@
         .glow-header-cancelada { color: var(--status-cancelado) !important; border-bottom-color: var(--status-cancelado) !important; }
         .glow-header-aguardando { color: var(--status-aguardando) !important; border-bottom-color: var(--status-aguardando) !important; }
 
-        /* Grade de botões de status (2x2 ou 3x2 para celular) */
         .status-btns { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-        
-        /* Botões mais altos (padding maior) para não errar o toque do dedo */
         .btn-status { border: none; padding: 10px 4px; border-radius: 6px; font-size: 11px; font-weight: bold; color: white; text-transform: uppercase; opacity: 0.6; }
-        
         .btn-active { opacity: 1 !important; border: 1px solid rgba(0,0,0,0.3); font-weight: 900; }
 
         .btn-verde { background: var(--status-iniciado); } 
@@ -137,7 +130,7 @@
         .btn-laranja { background: var(--status-cancelado); } 
         .btn-reset { background: var(--status-aguardando); } 
         .btn-edit { background: #6f42c1; opacity: 1 !important; } 
-        .btn-del { background: #000; grid-column: span 2; opacity: 1 !important; padding: 12px 4px; } /* Botão Deletar Gigante na base */
+        .btn-del { background: #000; grid-column: span 2; opacity: 1 !important; padding: 12px 4px; } 
     </style>
 </head>
 
@@ -222,192 +215,95 @@
     <div id="lista-status"></div>
 </div>
 
+
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
 <script>
-    function limparTodaPauta() {
-        if (confirm("Tem certeza que deseja apagar TODAS as pautas? Isso limpará a tela do ON-AIR e não pode ser desfeito.")) {
-            localStorage.setItem('pauta_senado_v5', '[]'); 
-            resetForm(); 
-            renderSidebar(); 
-            window.dispatchEvent(new Event('storage')); 
-        }
-    }
+    // 1. AS SUAS CHAVES REAIS DO FIREBASE
+    const firebaseConfig = {
+        apiKey: "AIzaSyCRZXbRFqotcxdPAl6ptg06jDf_GpW2De8",
+        authDomain: "sistema-tvsenado.firebaseapp.com",
+        databaseURL: "https://sistema-tvsenado-default-rtdb.firebaseio.com",
+        projectId: "sistema-tvsenado",
+        storageBucket: "sistema-tvsenado.firebasestorage.app",
+        messagingSenderId: "895965318952",
+        appId: "1:895965318952:web:3eab09f06ce06d76674a1d"
+    };
 
-    function validarFormatoHora(input) {
-        let v = input.value.replace(/\D/g, "");
-        if (v === "") return;
-        if (v.length <= 2) v = v.padStart(2, '0') + "00";
-        else if (v.length === 3) v = v.padStart(4, '0');
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database().ref('pauta_tv_senado');
 
-        let horas = v.substring(0, 2);
-        let minutos = v.substring(2, 4);
+    // 2. ESCUTA A NUVEM EM TEMPO REAL (SEM LOCALSTORAGE!)
+    db.on('value', (snapshot) => {
+        const p = snapshot.val() || [];
+        renderizarMonitor(p);
+    });
 
-        if (parseInt(horas) > 23) horas = "23";
-        if (parseInt(minutos) > 59) minutos = "59";
+    // Mantém o relógio rodando a cada segundo
+    setInterval(() => {
+        document.getElementById('clock').innerText = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    }, 1000);
 
-        input.value = horas + ":" + minutos;
-        if(document.getElementById('f-hora-picker')) document.getElementById('f-hora-picker').value = input.value;
-    }
-
-    function sincronizarTimePicker(picker) {
-        document.getElementById('f-hora').value = picker.value;
-    }
-
-    function setScroll(s) { localStorage.setItem('tv_scroll_active', s); }
-
-    function verificarConflitoSinal() {
-        const s = document.getElementById('f-xconv').value.trim().toUpperCase();
-        const editId = document.getElementById('f-id').value;
-        const p = JSON.parse(localStorage.getItem('pauta_senado_v5')) || [];
-        const conflito = p.some(i => i.xconv.trim().toUpperCase() === s && i.id.toString() !== editId);
-        document.getElementById('alerta-sinal').style.display = (s !== "" && conflito) ? 'block' : 'none';
-    }
-
-    function lancar() {
-        const idExistente = document.getElementById('f-id').value;
-        const horaVal = document.getElementById('f-hora').value;
-        
-        if(!horaVal || !document.getElementById('f-comissao').value) return alert("Preencha Hora e Comissão!");
-
-        let p = JSON.parse(localStorage.getItem('pauta_senado_v5')) || [];
-        let statusAtual = 'aguardando';
-
-        if (idExistente) {
-            const itemAntigo = p.find(x => x.id == idExistente);
-            if (itemAntigo) statusAtual = itemAntigo.status;
-        }
-
-        const d = { 
-            id: idExistente ? parseInt(idExistente) : Date.now(), 
-            hora: horaVal, comissao: document.getElementById('f-comissao').value, 
-            sala: document.getElementById('f-sala').value, gc: document.getElementById('f-gc').value, 
-            libra: document.getElementById('f-libra').value, xconv: document.getElementById('f-xconv').value, 
-            dtv: document.getElementById('f-dtv').value, gcop: document.getElementById('f-gcop').value, 
-            status: statusAtual
+    // 3. RENDERIZA OS CARDS NA TELA
+    function renderizarMonitor(p) {
+        const grids = {
+            'iniciada': document.getElementById('scroll-iniciada'),
+            'suspensa': document.getElementById('scroll-suspensa'),
+            'encerrada': document.getElementById('scroll-encerrada'),
+            'aguardando': document.getElementById('scroll-aguardando')
         };
 
-        if (idExistente) {
-            const index = p.findIndex(item => item.id == idExistente);
-            if(index !== -1) p[index] = d; else p.push(d);
-        } else { p.push(d); }
-
-        localStorage.setItem('pauta_senado_v5', JSON.stringify(p));
-        window.dispatchEvent(new Event('storage')); 
+        Object.values(grids).forEach(g => g.innerHTML = '');
         
-        resetForm(); renderSidebar();
-        
-        // No celular, rola suavemente para baixo para ver a pauta recém adicionada
-        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-    }
+        let pCopia = [...p];
+        pCopia.sort((a, b) => a.hora.localeCompare(b.hora));
 
-    function prepararEdicao(id) {
-        const p = JSON.parse(localStorage.getItem('pauta_senado_v5')) || [];
-        const d = p.find(i => i.id === id);
-        if(d) {
-            document.getElementById('f-id').value = d.id;
-            document.getElementById('f-hora').value = d.hora;
-            if(document.getElementById('f-hora-picker')) document.getElementById('f-hora-picker').value = d.hora;
-            document.getElementById('f-comissao').value = d.comissao;
-            document.getElementById('f-sala').value = d.sala;
-            document.getElementById('f-gc').value = d.gc;
-            document.getElementById('f-gcop').value = d.gcop;
-            document.getElementById('f-dtv').value = d.dtv;
-            document.getElementById('f-libra').value = d.libra;
-            document.getElementById('f-xconv').value = d.xconv;
-            document.getElementById('titulo-form').innerText = "Editando...";
-            document.getElementById('btn-salvar').innerText = "Atualizar TV";
-            document.getElementById('btn-salvar').classList.add('btn-edit-mode');
+        const check = (val) => (val && val.trim() !== "") ? `<span class="info-val">${val}</span>` : `<span class="info-val val-pendente">---</span>`;
+
+        pCopia.forEach(i => {
+            const rawSt = (i.status || 'aguardando').toLowerCase();
+            let st = 'encerrada';
+            if (['iniciada', 'iniciado', 'no ar'].includes(rawSt)) st = 'iniciada';
+            else if (['suspensa', 'suspenso'].includes(rawSt)) st = 'suspensa';
+            else if (['aguardando', 'proxima', 'próxima'].includes(rawSt)) st = 'aguardando';
             
-            // No celular, rola suavemente para o topo para editar
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-    }
-
-    function resetForm() {
-        document.getElementById('f-id').value = "";
-        ["f-hora", "f-comissao", "f-sala", "f-dtv", "f-gc", "f-gcop", "f-libra", "f-xconv"].forEach(id => {
-            const el = document.getElementById(id);
-            if(el) el.value = "";
-        });
-        if(document.getElementById('f-hora-picker')) document.getElementById('f-hora-picker').value = "";
-        document.getElementById('titulo-form').innerText = "Lançar Pauta";
-        document.getElementById('btn-salvar').innerText = "Salvar";
-        document.getElementById('btn-salvar').classList.remove('btn-edit-mode');
-    }
-
-    function mudarStatus(id, s) {
-        let p = JSON.parse(localStorage.getItem('pauta_senado_v5')) || [];
-        const idx = p.findIndex(i => i.id === id);
-        if(idx !== -1) { 
-            p[idx].status = s; 
-            localStorage.setItem('pauta_senado_v5', JSON.stringify(p)); 
-            window.dispatchEvent(new Event('storage'));
-            renderSidebar(); 
-        }
-    }
-
-    function remover(id) { 
-        if(confirm("Remover da pauta?")) { 
-            let p = JSON.parse(localStorage.getItem('pauta_senado_v5')) || []; 
-            p = p.filter(i => i.id !== id); 
-            localStorage.setItem('pauta_senado_v5', JSON.stringify(p)); 
-            window.dispatchEvent(new Event('storage'));
-            renderSidebar(); 
-        } 
-    }
-
-    function renderSidebar() {
-        let p = JSON.parse(localStorage.getItem('pauta_senado_v5')) || [];
-        const l = document.getElementById('lista-status');
-        l.innerHTML = '';
-        
-        const peso = { 'suspensa': 1, 'aguardando': 2, 'iniciada': 3, 'cancelada': 4, 'encerrada': 5 };
-        
-        p.sort((a, b) => {
-            const statusA = a.status || 'aguardando';
-            const statusB = b.status || 'aguardando';
-            if (peso[statusA] !== peso[statusB]) return peso[statusA] - peso[statusB];
-            return a.hora.localeCompare(b.hora);
+            const card = document.createElement('div');
+            const [h, m] = i.hora.split(':').map(Number);
+            const diffMin = Math.floor((new Date().setHours(h,m,0) - new Date()) / 60000);
+            
+            let classeUrgente = (st === 'aguardando' && diffMin <= 5 && diffMin > -120) ? 'urgente' : '';
+            
+            card.className = `pauta-card status-${st} ${classeUrgente}`;
+            
+            card.innerHTML = `
+                <div class="card-top">
+                    <div class="col-hora">${i.hora} <span class="xconv-tag">${(i.xconv && i.xconv.trim() !== "") ? i.xconv : ''}</span></div>
+                </div>
+                <div class="comissao-name" title="${i.comissao}">${i.comissao}</div>
+                
+                <div class="card-pills">
+                    <div class="pill"><span class="pill-label">SAL</span>${check(i.sala)}</div>
+                    <div class="pill"><span class="pill-label">LIB</span><span class="info-val">${i.libra || '-'}</span></div>
+                    <div class="pill"><span class="pill-label">GC</span>${check(i.gc)}</div>
+                    <div class="pill"><span class="pill-label">OP</span>${check(i.gcop)}</div>
+                    <div class="pill"><span class="pill-label">DTV</span>${check(i.dtv)}</div>
+                </div>
+            `;
+            grids[st].appendChild(card);
         });
 
-        let statusAtualContexto = ''; 
-
-        p.forEach(i => {
-            const st = i.status || 'aguardando';
-
-            if (st !== statusAtualContexto) {
-                l.innerHTML += `<div class="glow-header-${st}" style="font-size: 13px; font-weight: 800; text-transform: uppercase; margin: 15px 0 10px 0; border-bottom: 2px solid; padding-bottom: 4px;">${st}</div>`;
-                statusAtualContexto = st;
-            }
-
-            l.innerHTML += `
-                <div class="card-pauta glow-${st}">
-                    <b style="text-transform: uppercase;">${i.status} - ${i.hora} - ${i.comissao} </b>
-                    <div class="status-btns">
-                        <button class="btn-status btn-verde ${st === 'iniciada' ? 'btn-active' : ''}" onclick="mudarStatus(${i.id}, 'iniciada')">Iniciado</button>
-                        <button class="btn-status btn-amarelo ${st === 'suspensa' ? 'btn-active' : ''}" onclick="mudarStatus(${i.id}, 'suspensa')">Suspenso</button>
-                        <button class="btn-status btn-vermelho ${st === 'encerrada' ? 'btn-active' : ''}" onclick="mudarStatus(${i.id}, 'encerrada')">Encerrado</button>
-                        <button class="btn-status btn-laranja ${st === 'cancelada' ? 'btn-active' : ''}" onclick="mudarStatus(${i.id}, 'cancelada')">Cancelado</button>
-                        <button class="btn-status btn-reset ${st === 'aguardando' ? 'btn-active' : ''}" onclick="mudarStatus(${i.id}, 'aguardando')">Aguardar</button>
-                        <button class="btn-status btn-edit" onclick="prepararEdicao(${i.id})">Editar</button>
-                        <button class="btn-status btn-del" onclick="remover(${i.id})">Remover</button>
-                    </div>
-                </div>`;
+        ['iniciada', 'suspensa', 'encerrada'].forEach(id => {
+            const wrapper = document.getElementById('group-' + id);
+            if (grids[id].children.length === 0) wrapper.style.display = 'none';
+            else wrapper.style.display = 'flex';
         });
-    }
 
-    window.onload = () => { 
-        localStorage.setItem('tv_scroll_active', 'true'); 
-        renderSidebar(); 
-    };
-    const firebaseConfig = {
-  apiKey: "AIzaSyCRZXbRFqotcxdPAl6ptg06jDf_GpW2De8",
-  authDomain: "sistema-tvsenado.firebaseapp.com",
-  databaseURL: "https://sistema-tvsenado-default-rtdb.firebaseio.com",
-  projectId: "sistema-tvsenado",
-  storageBucket: "sistema-tvsenado.firebasestorage.app",
-  messagingSenderId: "895965318952",
-  appId: "1:895965318952:web:3eab09f06ce06d76674a1d"
-};
+        const sidebar = document.getElementById('sidebar-aguardando');
+        if (grids['aguardando'].children.length === 0) sidebar.style.display = 'none';
+        else sidebar.style.display = 'flex';
+    }
 </script>
 </body>
 </html>

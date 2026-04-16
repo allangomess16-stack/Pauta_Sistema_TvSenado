@@ -260,52 +260,42 @@
     </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
 <script>
+    // 2. SUAS CHAVES REAIS DO FIREBASE
+    const firebaseConfig = {
+        apiKey: "AIzaSyCRZXbRFqotcxdPAl6ptg06jDf_GpW2De8",
+        authDomain: "sistema-tvsenado.firebaseapp.com",
+        databaseURL: "https://sistema-tvsenado-default-rtdb.firebaseio.com",
+        projectId: "sistema-tvsenado",
+        storageBucket: "sistema-tvsenado.firebasestorage.app",
+        messagingSenderId: "895965318952",
+        appId: "1:895965318952:web:3eab09f06ce06d76674a1d"
+    };
+
+    // 3. INICIALIZANDO A NUVEM
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database().ref('pauta_tv_senado');
+
+    let pautaLocal = [];
+
+    // 4. ESCUTANDO MUDANÇAS EM TEMPO REAL
+    db.on('value', (snapshot) => {
+        pautaLocal = snapshot.val() || [];
+        renderSidebar(); // Atualiza a barra lateral automaticamente
+    });
+
+    // =====================================================================
+    // FUNÇÕES DE AÇÃO (Lançar, Editar, Remover) - Agora salvam no Firebase
+    // =====================================================================
+
     function limparTodaPauta() {
-        if (confirm("ATENÇÃO: Tem certeza que deseja apagar TODAS as pautas? Isso limpará a tela do ON-AIR também e não pode ser desfeito.")) {
-            localStorage.setItem('pauta_senado_v5', '[]'); 
-            resetForm(); 
-            renderSidebar(); 
-            window.dispatchEvent(new Event('storage')); // Força a atualização do ON-AIR
+        if (confirm("ATENÇÃO: Apagar TODAS as pautas em todas as telas conectadas? Isso não pode ser desfeito.")) {
+            db.set([]); // Limpa o banco na nuvem
+            resetForm();
         }
-    }
-
-    function validarFormatoHora(input) {
-        let v = input.value.replace(/\D/g, "");
-        if (v === "") return;
-
-        if (v.length <= 2) {
-            v = v.padStart(2, '0') + "00";
-        } else if (v.length === 3) {
-            v = v.padStart(4, '0');
-        }
-
-        let horas = v.substring(0, 2);
-        let minutos = v.substring(2, 4);
-
-        if (parseInt(horas) > 23) horas = "23";
-        if (parseInt(minutos) > 59) minutos = "59";
-
-        input.value = horas + ":" + minutos;
-        if(document.getElementById('f-hora-picker')) {
-            document.getElementById('f-hora-picker').value = input.value;
-        }
-    }
-
-    function sincronizarTimePicker(picker) {
-        document.getElementById('f-hora').value = picker.value;
-    }
-
-    function setScroll(s) { 
-        localStorage.setItem('tv_scroll_active', s); 
-    }
-
-    function verificarConflitoSinal() {
-        const s = document.getElementById('f-xconv').value.trim().toUpperCase();
-        const editId = document.getElementById('f-id').value;
-        const p = JSON.parse(localStorage.getItem('pauta_senado_v5')) || [];
-        const conflito = p.some(i => i.xconv.trim().toUpperCase() === s && i.id.toString() !== editId);
-        document.getElementById('alerta-sinal').style.display = (s !== "" && conflito) ? 'block' : 'none';
     }
 
     function lancar() {
@@ -314,11 +304,10 @@
         
         if(!horaVal || !document.getElementById('f-comissao').value) return alert("Preencha Hora e Comissão!");
 
-        let p = JSON.parse(localStorage.getItem('pauta_senado_v5')) || [];
         let statusAtual = 'aguardando';
 
         if (idExistente) {
-            const itemAntigo = p.find(x => x.id == idExistente);
+            const itemAntigo = pautaLocal.find(x => x.id == idExistente);
             if (itemAntigo) statusAtual = itemAntigo.status;
         }
 
@@ -336,23 +325,20 @@
         };
 
         if (idExistente) {
-            const index = p.findIndex(item => item.id == idExistente);
-            if(index !== -1) p[index] = d;
-            else p.push(d);
+            const index = pautaLocal.findIndex(item => item.id == idExistente);
+            if(index !== -1) pautaLocal[index] = d;
+            else pautaLocal.push(d);
         } else {
-            p.push(d);
+            pautaLocal.push(d);
         }
 
-        localStorage.setItem('pauta_senado_v5', JSON.stringify(p));
-        window.dispatchEvent(new Event('storage')); 
-        
+        // SALVA NA NUVEM
+        db.set(pautaLocal);
         resetForm();
-        renderSidebar();
     }
 
     function prepararEdicao(id) {
-        const p = JSON.parse(localStorage.getItem('pauta_senado_v5')) || [];
-        const d = p.find(i => i.id === id);
+        const d = pautaLocal.find(i => i.id === id);
         if(d) {
             document.getElementById('f-id').value = d.id;
             document.getElementById('f-hora').value = d.hora;
@@ -383,34 +369,76 @@
     }
 
     function mudarStatus(id, s) {
-        let p = JSON.parse(localStorage.getItem('pauta_senado_v5')) || [];
-        const idx = p.findIndex(i => i.id === id);
+        const idx = pautaLocal.findIndex(i => i.id === id);
         if(idx !== -1) { 
-            p[idx].status = s; 
-            localStorage.setItem('pauta_senado_v5', JSON.stringify(p)); 
-            window.dispatchEvent(new Event('storage'));
-            renderSidebar(); 
+            pautaLocal[idx].status = s; 
+            db.set(pautaLocal); // Atualiza na nuvem
         }
     }
 
     function remover(id) { 
         if(confirm("Remover da pauta?")) { 
-            let p = JSON.parse(localStorage.getItem('pauta_senado_v5')) || []; 
-            p = p.filter(i => i.id !== id); 
-            localStorage.setItem('pauta_senado_v5', JSON.stringify(p)); 
-            window.dispatchEvent(new Event('storage'));
-            renderSidebar(); 
+            pautaLocal = pautaLocal.filter(i => i.id !== id); 
+            db.set(pautaLocal); // Remove da nuvem
         } 
     }
 
+    // =====================================================================
+    // FUNÇÕES UTILITÁRIAS
+    // =====================================================================
+
+    function validarFormatoHora(input) {
+        let v = input.value.replace(/\D/g, "");
+        if (v === "") return;
+
+        if (v.length <= 2) {
+            v = v.padStart(2, '0') + "00";
+        } else if (v.length === 3) {
+            v = v.padStart(4, '0');
+        }
+
+        let horas = v.substring(0, 2);
+        let minutos = v.substring(2, 4);
+
+        if (parseInt(horas) > 23) horas = "23";
+        if (parseInt(minutos) > 59) minutos = "59";
+
+        input.value = horas + ":" + minutos;
+        if(document.getElementById('f-hora-picker')) {
+            document.getElementById('f-hora-picker').value = input.value;
+        }
+    }
+
+    function sincronizarTimePicker(picker) {
+        document.getElementById('f-hora').value = picker.value;
+    }
+
+    // O comando de play/pause da rolagem continua usando localStorage 
+    // porque afeta apenas a TV local, não a nuvem.
+    function setScroll(s) { 
+        localStorage.setItem('tv_scroll_active', s); 
+    }
+
+    function verificarConflitoSinal() {
+        const s = document.getElementById('f-xconv').value.trim().toUpperCase();
+        const editId = document.getElementById('f-id').value;
+        const conflito = pautaLocal.some(i => i.xconv.trim().toUpperCase() === s && i.id.toString() !== editId);
+        document.getElementById('alerta-sinal').style.display = (s !== "" && conflito) ? 'block' : 'none';
+    }
+
+    // =====================================================================
+    // RENDERIZAÇÃO DA BARRA LATERAL (Pauta Atual)
+    // =====================================================================
+
     function renderSidebar() {
-        let p = JSON.parse(localStorage.getItem('pauta_senado_v5')) || [];
         const l = document.getElementById('lista-status');
         l.innerHTML = '';
         
         const peso = { 'suspensa': 1, 'aguardando': 2, 'iniciada': 3, 'cancelada': 4, 'encerrada': 5 };
         
-        p.sort((a, b) => {
+        // Cria uma cópia para não mexer no array original na hora de ordenar
+        let pCopia = [...pautaLocal];
+        pCopia.sort((a, b) => {
             const statusA = a.status || 'aguardando';
             const statusB = b.status || 'aguardando';
             if (peso[statusA] !== peso[statusB]) {
@@ -421,7 +449,7 @@
 
         let statusAtualContexto = ''; 
 
-        p.forEach(i => {
+        pCopia.forEach(i => {
             const st = i.status || 'aguardando';
 
             if (st !== statusAtualContexto) {
@@ -445,19 +473,10 @@
         });
     }
 
+    // Inicializa a variável de controle da rolagem ao carregar a página
     window.onload = () => { 
         localStorage.setItem('tv_scroll_active', 'true'); 
-        renderSidebar(); 
     };
-    const firebaseConfig = {
-  apiKey: "AIzaSyCRZXbRFqotcxdPAl6ptg06jDf_GpW2De8",
-  authDomain: "sistema-tvsenado.firebaseapp.com",
-  databaseURL: "https://sistema-tvsenado-default-rtdb.firebaseio.com",
-  projectId: "sistema-tvsenado",
-  storageBucket: "sistema-tvsenado.firebasestorage.app",
-  messagingSenderId: "895965318952",
-  appId: "1:895965318952:web:3eab09f06ce06d76674a1d"
-};
 </script>
 </body>
 </html>
