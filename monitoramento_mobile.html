@@ -199,7 +199,7 @@
         </aside>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
 <script>
@@ -218,9 +218,7 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database().ref('pauta_tv_senado');
 
-    let lastDataHash = "";
-
-    // 4. ESCUTANDO A NUVEM EM TEMPO REAL (Fim do localStorage)
+    // 4. ESCUTANDO A NUVEM EM TEMPO REAL
     db.on('value', (snapshot) => {
         const pautaNuvem = snapshot.val() || [];
         renderizarMonitor(pautaNuvem);
@@ -231,7 +229,7 @@
         document.getElementById('clock').innerText = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     }, 1000);
 
-    // 5. FUNÇÃO DE RENDERIZAÇÃO ADAPTADA
+    // 5. FUNÇÃO DE RENDERIZAÇÃO COM LAYOUT INTELIGENTE
     function renderizarMonitor(p) {
         const grids = {
             'iniciada': document.getElementById('scroll-iniciada'),
@@ -264,7 +262,7 @@
             
             const diffMin = Math.floor((pautaHora - agora) / 60000);
             
-            // Lógica de Urgência: Se faltar 5 min ou estiver atrasada até 2 horas
+            // Lógica de Urgência
             let classeUrgente = (st === 'aguardando' && diffMin <= 5 && diffMin > -120) ? 'urgente' : '';
             
             card.className = `pauta-card status-${st} ${classeUrgente}`;
@@ -287,11 +285,20 @@
             grids[st].appendChild(card);
         });
 
-        // Mostra ou oculta as seções dependendo do conteúdo
+        // 6. LÓGICA DE EXIBIÇÃO DE GRUPOS (LIDANDO COM ESPAÇO NO CELULAR)
         ['iniciada', 'suspensa', 'encerrada'].forEach(id => {
             const wrapper = document.getElementById('group-' + id);
-            if (grids[id].children.length === 0) wrapper.style.display = 'none';
-            else wrapper.style.display = 'flex';
+            if (grids[id].children.length === 0) {
+                wrapper.style.display = 'none';
+            } else {
+                wrapper.style.display = 'flex';
+                // Prioriza as ativas. Encerradas ficam com tamanho natural.
+                if (id === 'encerrada') {
+                    wrapper.style.flex = "0 1 auto"; 
+                } else {
+                    wrapper.style.flex = "1 1 auto";
+                }
+            }
         });
 
         const sidebar = document.getElementById('sidebar-aguardando');
