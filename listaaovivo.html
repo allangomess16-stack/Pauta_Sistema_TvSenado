@@ -2,54 +2,46 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ON-AIR - MASTER CONTROL TV SENADO</title>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-   <style>
+    <style>
         /* =====================================================================
            VARIÁVEIS GLOBAIS (:root)
-           Controla a paleta de cores de todo o painel ON-AIR.
-           Mudar uma cor aqui reflete no código inteiro.
            ===================================================================== */
         :root { 
-            --bg-body: #0c0c0c;         /* Fundo escuro da tela ON-AIR (cinza quase preto) */
-            --bg-card: #ffffff;         /* Fundo dos cards das pautas (branco) */
-            --accent-blue: #0056b3;     /* Azul destaque (usado no relógio e horas) */
-            --text-main: #2c3e50;       /* Cor da fonte principal (cinza chumbo) */
-            --text-dim: #d3d3d3;        /* Cor do texto secundário/apagado */
-            --border-light: #e1e4e8;    /* Cor das bordas dos cards */
+            --bg-body: #0c0c0c;         
+            --bg-card: #ffffff;         
+            --accent-blue: #0056b3;     
+            --text-main: #2c3e50;       
+            --text-dim: #d3d3d3;        
+            --border-light: #e1e4e8;    
             
-            /* Cores dos Status das Comissões */
             --status-aguardando: #2980b9; 
             --status-iniciado: #27ae60; 
             --status-suspenso: #f39c12; 
             --status-encerrado: #c0392b; 
             --status-cancelado: #d35400; 
-            --status-urgente: #ee372a;    /* Alerta laranja para 5min ou atraso */
+            --status-urgente: #ee372a;    
         }
         
-        /* =====================================================================
-           RESET E BASE DA PÁGINA
-           Garante que a tela ocupe exatamente o tamanho do monitor, sem sobrar.
-           ===================================================================== */
-        * { box-sizing: border-box; } /* Impede que paddings aumentem o tamanho real das caixas */
+        * { box-sizing: border-box; } 
         
         body { 
             background-color: var(--bg-body); 
             color: var(--text-main); 
             font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
             margin: 0; padding: 0; 
-            overflow-x: hidden; /* Corta rolagem para os lados */
-            overflow-y: auto;   /* Permite rolar para baixo se necessário */
-            min-height: 100vh;  /* Ocupa pelo menos 100% da altura da tela */
-            width: 100vw;       /* Ocupa 100% da largura da tela */
+            overflow-x: hidden; 
+            overflow-y: auto;   
+            min-height: 100vh;  
+            width: 100vw;       
         }
         
-        /* Espaçamento principal ao redor de toda a tela */
         .screen-container { height: 100vh; display: flex; flex-direction: column; padding: 15px 2vw; }
 
         /* =====================================================================
-           CABEÇALHO (TOP BAR)
-           Contém os Status (Contadores) na esquerda e Relógio/Botão na direita
+           CABEÇALHO, CONTADORES E FILTROS INTERATIVOS
            ===================================================================== */
         header { 
             flex-shrink: 0; 
@@ -58,264 +50,207 @@
         }
         
         .title-group { display: flex; flex-direction: column; gap: 8px; }
-        
-        /* Contadores de Status (No Ar: 1, Susp: 0, etc.) */
         .stats-bar { display: flex; gap: 6px; flex-wrap: wrap; }
-        .stat-badge { font-size: clamp(0.75rem, 1.1vw, 0.85rem); font-weight: 700; padding: 4px 8px; border-radius: 4px; display: flex; gap: 4px; align-items: center; border: 1px solid; white-space: nowrap; }
+        
+        .stat-badge { 
+            font-size: clamp(0.75rem, 1.1vw, 0.85rem); font-weight: 700; padding: 4px 8px; 
+            border-radius: 4px; display: flex; gap: 4px; align-items: center; 
+            border: 1px solid; white-space: nowrap;
+            cursor: pointer; transition: all 0.2s ease-in-out;
+            user-select: none;
+        }
+        .stat-badge:hover { transform: scale(1.05); filter: brightness(1.2); }
         .stat-badge span { font-size: clamp(0.9rem, 1.3vw, 1.1rem); font-weight: 800; }
         
-        /* Cores específicas para cada contador no topo */
         .s-iniciada { color: var(--status-iniciado); background: rgba(39,174,96,0.1); border-color: rgba(39,174,96,0.3); }
         .s-suspensa { color: var(--status-suspenso); background: rgba(243,156,18,0.1); border-color: rgba(243,156,18,0.3); }
         .s-aguardando { color: var(--status-aguardando); background: rgba(41,128,185,0.1); border-color: rgba(41,128,185,0.3); }
         .s-encerrada { color: var(--status-encerrado); background: rgba(192,57,43,0.1); border-color: rgba(192,57,43,0.3); }
 
-        /* Área Direita (Botão de Limpar e Relógio Digital) */
-        .header-right { display: flex; align-items: center; gap: 20px; }
-        
-        .btn-limpar { background-color: transparent; color: var(--status-encerrado); border: 2px solid var(--status-encerrado); padding: 6px 12px; border-radius: 6px; font-family: 'Inter', sans-serif; font-weight: 700; font-size: clamp(0.8rem, 1vw, 1rem); cursor: pointer; transition: all 0.2s ease; text-transform: uppercase; }
-        .btn-limpar:hover { background-color: var(--status-encerrado); color: #fff; }
+        .s-iniciada.filtro-ativo { background: var(--status-iniciado); color: #fff; box-shadow: 0 0 10px rgba(39,174,96,0.5); }
+        .s-suspensa.filtro-ativo { background: var(--status-suspenso); color: #fff; box-shadow: 0 0 10px rgba(243,156,18,0.5); }
+        .s-aguardando.filtro-ativo { background: var(--status-aguardando); color: #fff; box-shadow: 0 0 10px rgba(41,128,185,0.5); }
+        .s-encerrada.filtro-ativo { background: var(--status-encerrado); color: #fff; box-shadow: 0 0 10px rgba(192,57,43,0.5); }
 
-        /* O Relógio usa a fonte JetBrains Mono (estilo terminal/código) */
+        .header-right { display: flex; align-items: center; gap: 20px; }
         #clock { font-size: clamp(2.8rem, 3vw, 2.2rem); font-family: 'JetBrains Mono', 'Consolas', monospace; color: var(--accent-blue); font-weight: 900; line-height: 1; margin: 0; }
         
         /* =====================================================================
-           SISTEMA DE GRID (A GRADE DOS CARDS)
-           Esta é a parte mais importante. Define o tamanho das 7 colunas.
-           O "minmax(0, Xfr)" divide o espaço total e evita que itens estiquem a tela.
+           SISTEMA DE GRID (7 COLUNAS - SEM CORTE)
            ===================================================================== */
         .pauta-grid-header, .pauta-row {
             display: grid;
             grid-template-columns: 
-                minmax(0, 3.3fr) /* 1. Pauta (A mais larga) */
-                minmax(0, 1.0fr) /* 2. Sala */
-                minmax(0, 1.2fr) /* 3. Libras */
-                minmax(0, 1.2fr) /* 4. X-Conv */
-                minmax(0, 1.0fr) /* 5. GC */
-                minmax(0, 1.9fr) /* 6. GC Op */
-                minmax(0, 1.5fr);/* 7. DTV */
+                minmax(0, 3.4fr)   /* 1. Pauta */
+                minmax(0, 1.2fr)   /* 2. Sala */
+                minmax(0, 0.7fr)   /* 3. Libras */
+                minmax(0, 1.5fr)   /* 4. X-Conv */
+                minmax(0, 1.1fr)   /* 5. GC */
+                minmax(0, 1.6fr)   /* 6. GC Op */
+                minmax(0, 1.3fr);  /* 7. DTV */
             align-items: center;
             width: 100%;
-            gap: 1vw; /* Distância dinâmica entre colunas baseada na largura da tela */
+            gap: 1vw; 
         }
 
-        /* O cabeçalho da tabela (PAUTA, SALA, LIBRAS...) */
         .pauta-grid-header {
-            position: sticky; top: 0; z-index: 50; /* Fica fixo no topo ao rolar a página */
+            position: sticky; top: 0; z-index: 50; 
             background: var(--bg-body);
             padding: 8px 1vw;
             color: var(--text-dim);
             font-size: clamp(0.7rem, 1vw, 0.8rem);
-            font-weight: 700; 
+            font-weight: 800; 
             text-transform: uppercase;
             letter-spacing: 1px;
             margin-bottom: 8px;
             border-bottom: 2px solid var(--border-light);
         }
 
-        /* Garante que textos longos virem "..." (ellipsis) e não quebrem a tabela */
-        .pauta-grid-header div, .pauta-row > div {
-            min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-        }
-
-        /* Alinha todas as colunas técnicas no centro, exceto a primeira (Pauta) */
-        .pauta-grid-header div:not(:first-child), .pauta-row > div:not(.col-main) { text-align: center; }
+        .pauta-grid-header div, .pauta-row > div { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .pauta-grid-header div:not(:first-child), .pauta-row > div:not(.col-main) { text-align: center; font-weight: 800; }
 
         /* =====================================================================
-           VISUAL DOS CARDS (As Linhas da Pauta)
+           VISUAL DOS CARDS E BOTÃO OCULTAR
            ===================================================================== */
         .pauta-row {
             background: var(--bg-card);
-            margin-bottom: 8px; 
+            margin-bottom: 5px; 
             border-radius: 6px; 
-            padding: 10px 1vw; 
+            padding: 4px 1vw; 
             border: 2px solid var(--border-light);
-            transition: transform 0.2s ease, box-shadow 0.2s ease; /* Animação suave ao mover */
-            cursor: grab; /* Ícone de mão ao passar o mouse (para arrastar) */
-            min-height: 54px; 
+            transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.3s ease; 
+            cursor: grab; 
+            min-height: 48px; 
+            font-weight: 800; 
         }
         
-        .pauta-row:active { cursor: grabbing; transform: scale(0.99); } /* Efeito de apertar ao arrastar */
-        .sortable-ghost { opacity: 0.4; background: #e8ecef !important; } /* Visual de "fantasma" ao arrastar */
+        .pauta-row:active { cursor: grabbing; transform: scale(0.99); } 
+        .sortable-ghost { opacity: 0.4; background: #e8ecef !important; } 
 
-        /* CORES DE STATUS NAS BORDAS E SOMBRAS DOS CARDS */
         .pauta-row.status-iniciada { border-color: var(--status-iniciado); box-shadow: inset 4px 0 0 var(--status-iniciado); }
         .pauta-row.status-suspensa { border-color: var(--status-suspenso); box-shadow: inset 4px 0 0 var(--status-suspenso); }
         .pauta-row.status-aguardando { border-color: var(--status-aguardando); box-shadow: inset 4px 0 0 var(--status-aguardando); }
         .pauta-row.status-encerrada { border-color: rgba(192, 57, 43, 0.4); border-left: 4px solid var(--status-encerrado); }
-        .pauta-row.status-cancelada { border-color: rgba(211, 84, 0, 0.4); border-left: 4px solid var(--status-cancelado); }
+        
+        .pauta-row.oculta { opacity: 0.4; filter: grayscale(100%); background: #fdfdfd; }
+        
+        .btn-ocultar {
+            background: transparent; border: none; cursor: pointer;
+            font-size: clamp(1rem, 1.4vw, 1.5rem); padding: 0; margin-right: 4px;
+            filter: grayscale(1); opacity: 0.5; transition: 0.2s;
+        }
+        .btn-ocultar:hover { filter: grayscale(0); opacity: 1; transform: scale(1.2); }
 
-        /* Animação do Alerta Laranja (Urgente) */
-        @keyframes pulse-urgente-border { 
-            0% { border-color: var(--status-urgente); box-shadow: 0 0 0 rgba(134, 16, 16, 0.4); } 
-            50% { border-color: #d30000; box-shadow: 0 0 8px rgba(230, 34, 34, 0.842); } 
-            100% { border-color: var(--status-urgente); box-shadow: 0 0 0 rgba(230, 34, 34, 0.4); } 
-        }
-        .pauta-row.urgente { border-color: var(--status-urgente) !important; animation: pulse-urgente-border 1.5s infinite; }
-         /* ANIMAÇÃO DE URGÊNCIA (Borda e Sombra Interna Pulsante) */
         @keyframes pulse-urgente-card { 
-            0% { 
-                border-color: #ff0055; 
-                box-shadow: inset 0 0 5px rgba(255, 0, 85, 0.2), 0 0 0 rgba(255, 0, 85, 0.2); 
-            } 
-            50% { 
-                border-color: #cc0044; 
-                /* Sombra interna forte (inset) e sombra externa leve */
-                box-shadow: inset 0 0 25px rgba(255, 0, 85, 0.6), 0 0 10px rgba(255, 0, 85, 0.4); 
-            } 
-            100% { 
-                border-color: #ff0055; 
-                box-shadow: inset 0 0 5px rgba(255, 0, 85, 0.2), 0 0 0 rgba(255, 0, 85, 0.2); 
-            } 
+            0% { border-color: #ff0055; box-shadow: inset 0 0 5px rgba(255, 0, 85, 0.2), 0 0 0 rgba(255, 0, 85, 0.2); } 
+            50% { border-color: #cc0044; box-shadow: inset 0 0 25px rgba(255, 0, 85, 0.6), 0 0 10px rgba(255, 0, 85, 0.4); } 
+            100% { border-color: #ff0055; box-shadow: inset 0 0 5px rgba(255, 0, 85, 0.2), 0 0 0 rgba(255, 0, 85, 0.2); } 
         }
+
+        .pauta-row.urgente { border-color: #ff0055 !important; animation: pulse-urgente-card 1.2s infinite ease-in-out !important; }
 
         /* =====================================================================
-           ESTILIZAÇÃO DE TEXTOS E PÍLULAS INTERNAS
+           ESTILIZAÇÃO DE TEXTOS E PÍLULAS INTERNAS 
            ===================================================================== */
+        .col-main { display: flex; align-items: center; gap: 8px; }
+        .col-hora { flex-shrink: 0; font-family: 'JetBrains Mono', monospace; font-weight: 900; color: var(--accent-blue); font-size: clamp(1.6rem, 2vw, 2.2rem); }
         
-        /* 1. Primeira Coluna Agrupada (Hora + Ícone de Status + Comissão) */
-        .col-main { display: flex; align-items: center; gap: 5px; }
-
-        /* Horário da Comissão */
-        .col-hora { flex-shrink: 0; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--accent-blue); font-size: clamp(1.25rem, 1.7vw, 1.5rem); }
+        .comissao-name { font-weight: 700; color: var(--text-main); font-size: clamp(1.4rem, 1.6vw, 1.55rem); letter-spacing: -0.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1; min-width: 0; }
         
-        /* Nome da Comissão */
-        .comissao-name { 
-            font-weight: 700; color: var(--text-main); font-size: clamp(1.55rem, 1.6vw, 1.4rem); 
-            letter-spacing: -0.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
-            flex-grow: 1; min-width: 0; 
-        }
+        .tech-data { font-family: 'JetBrains Mono', monospace; font-size: clamp(1.4rem, 1.7vw, 2rem); font-weight: 800; color: #34495e; display: flex; justify-content: center; }
         
-        /* Base para colunas técnicas (DTV, etc) */
-        .tech-data { font-family: 'JetBrains Mono', monospace; font-size: clamp(1.1rem, 1.4vw, 1.15rem); font-weight: 500; color: #34495e; }
+        .col-sala { font-weight: 900; color: var(--text-main); font-size: clamp(1.8rem, 2vw, 2.4rem); text-align: center; }
         
-        /* Sala */
-        .col-sala { font-weight: 600; color: var(--text-main); font-size: clamp(1.9rem, 1.5vw, 1.3rem); }
-        
-        /* GC Estação */
-        .col-gc { color: #c0392b; font-weight: 600; font-size: clamp(1.9rem, 1.3vw, 1.2rem); padding: 3px 8px; border-radius: 4px; } 
-        
-        /* GC Operador */
-        .GC-op { font-size: clamp(1.2rem, 1.3vw, 1.2rem); padding: 3px 8px; border-radius: 4px; }
-            
-        /* Pílulas de fundo colorido (Libras, X-Conv e GCs) */
-        .GC-tag { padding: 3px 8px; border-radius: 4px; font-size: clamp(1.9rem, 1.3vw, 1.2rem); display: inline-block; max-width: 100%; }
-
-        .libras-tag, .xconv-tag { 
-            font-weight: 600; font-size: clamp(1.9rem, 1.3vw, 1.2rem); 
-            padding: 3px 8px; border-radius: 4px; 
-            display: inline-block; max-width: 100%; 
-            overflow: hidden; text-overflow: ellipsis; 
+        /* Tags combinadas - otimizado */
+        .libras-tag, .xconv-tag, .dtv-tag, .GC-tag, .GC-op { 
+            font-weight: 900; font-size: clamp(1.4rem, 1.7vw, 2rem); 
+            padding: 2px 6px; border-radius: 4px; display: inline-block; 
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
         }
         .libras-tag { color: #8e44ad; background: rgba(142, 68, 173, 0.1); }
         .xconv-tag { color: #16a085; background: rgba(22, 160, 133, 0.1); }
         .GC-tag { color: #fd1313; background: rgba(142, 68, 173, 0.1); }
         .GC-op { color: #fd1313; background: rgba(142, 68, 173, 0.1); }
+        
+        .conflito-amarelo { background-color: #f1c40f !important; color: #000 !important; border-radius: 4px; }
 
         /* =====================================================================
-           PONTO DE STATUS E CONFLITOS (AMARELO)
+           PONTO DE STATUS 
            ===================================================================== */
-        /* Container e Bolinha de Status */
         .status-dot-wrapper { flex-shrink: 0; display: flex; justify-content: center; align-items: center; padding: 0 4px; }
-        .status-dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .status-dot { width: 16px; height: 16px; border-radius: 50%; display: inline-block; box-shadow: 0 2px 4px rgba(0,0,0,0.1); } 
 
-        /* Efeitos de pulso luminoso na bolinha */
         @keyframes pulse-iniciado { 0% { box-shadow: 0 0 0 0 rgba(39, 174, 96, 0.6); } 70% { box-shadow: 0 0 0 8px rgba(39, 174, 96, 0); } 100% { box-shadow: 0 0 0 0 rgba(39, 174, 96, 0); } }
         @keyframes pulse-suspenso { 0% { box-shadow: 0 0 0 0 rgba(243, 156, 18, 0.6); } 70% { box-shadow: 0 0 0 8px rgba(243, 156, 18, 0); } 100% { box-shadow: 0 0 0 0 rgba(243, 156, 18, 0); } }
         @keyframes pulse-urgente-dot { 0% { box-shadow: 0 0 0 0 rgb(250, 0, 0); transform: scale(1); } 50% { box-shadow: 0 0 0 10px rgba(230, 126, 34, 0); transform: scale(1.1); } 100% { box-shadow: 0 0 0 0 rgba(230, 126, 34, 0); transform: scale(1); } }
         
         .status-iniciada .status-dot { background: var(--status-iniciado); animation: pulse-iniciado 2s infinite; }
         .status-suspensa .status-dot { background: var(--status-suspenso); animation: pulse-suspenso 2s infinite; }
-        .status-aguardando .status-dot { border: 3px solid var(--status-aguardando); background: transparent; width: 10px; height: 10px; }
+        .status-aguardando .status-dot { border: 3px solid var(--status-aguardando); background: transparent; width: 12px; height: 12px; }
         .status-encerrada .status-dot { background: var(--status-encerrado); }
         .status-cancelada .status-dot { background: var(--status-cancelado); }
-        .urgente .status-dot { background: var(--status-urgente) !important; border: none; width: 14px; height: 14px; animation: pulse-urgente-dot 1s infinite; }
-
-     
-        .pauta-row.urgente { 
-            border-color: #ff0055 !important; 
-            animation: pulse-urgente-card 1.2s infinite ease-in-out !important; 
-        }
+        .urgente .status-dot { background: var(--status-urgente) !important; border: none; width: 16px; height: 16px; animation: pulse-urgente-dot 1s infinite; }
 
         /* =====================================================================
-           ÁREA DE ROLAGEM (SCROLL) E HISTÓRICO
+           ÁREA DE ROLAGEM E HISTÓRICO
            ===================================================================== */
         #viewport-scroll { flex-grow: 1; overflow-y: auto; position: relative; padding-right: 5px; }
         #viewport-scroll::-webkit-scrollbar, body::-webkit-scrollbar { width: 6px; }
         #viewport-scroll::-webkit-scrollbar-track, body::-webkit-scrollbar-track { background: transparent; }
         #viewport-scroll::-webkit-scrollbar-thumb, body::-webkit-scrollbar-thumb { background: #bdc3c7; border-radius: 10px; }
-        #viewport-scroll::-webkit-scrollbar-thumb:hover { background: #95a5a6; }
-
-        #history-section { padding: 15px 25px; background: #e8ecf1; border-top: 2px solid var(--border-light); min-height: 150px; box-sizing: border-box; }
-        .history-title { text-align: center; color: var(--text-dim); text-transform: uppercase; font-size: 0.85rem; letter-spacing: 2px; margin-bottom: 15px; font-weight: 800; opacity: 0.8; }
-
-        .status-cancelada, .status-encerrada { opacity: 0.6; filter: grayscale(0.2); background: #fdfdfd; box-shadow: none; }
-        .sortable-drag { opacity: 0; }
+        
+        #history-section { padding: 10px 25px; background: #e8ecf1; border-top: 2px solid var(--border-light); box-sizing: border-box; }
+        .history-title { text-align: center; color: var(--text-dim); text-transform: uppercase; font-size: 0.85rem; letter-spacing: 2px; margin-bottom: 10px; font-weight: 800; opacity: 0.8; }
         
         /* =====================================================================
-           RESPONSIVIDADE (MEDIA QUERIES PARA CELULARES E TABLETS)
+           TELA DE ERRO / OFFLINE
            ===================================================================== */
-        
-        /* Telas até 1024px (Tablets / Laptops bem pequenos) */
+        .erro-conexao {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 40px; text-align: center; color: #e74c3c;
+            background: rgba(231, 76, 60, 0.1); border-radius: 8px; margin: 20px;
+        }
+        .erro-conexao h2 { margin: 0 0 10px 0; font-size: 1.5rem; }
+        .erro-conexao p { margin: 0; color: #7f8c8d; }
+        .erro-conexao .btn-retry {
+            margin-top: 15px; padding: 10px 20px; background: var(--accent-blue);
+            color: #fff; border: none; border-radius: 4px; cursor: pointer;
+            font-size: 1rem; transition: 0.2s;
+        }
+        .erro-conexao .btn-retry:hover { filter: brightness(1.1); }
         @media (max-width: 1024px) {
             .pauta-grid-header, .pauta-row {
-                /* Diminui o espaço das colunas técnicas e aumenta o da Pauta */
                 grid-template-columns: minmax(0, 3fr) minmax(0, 0.7fr) minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 0.8fr) minmax(0, 1fr) minmax(0, 1fr);
-                gap: 5px;
             }
-            .comissao-name { font-size: 1.2rem; }
-            .col-sala, .libras-tag, .xconv-tag, .GC-tag, .GC-op { font-size: 1.1rem; }
-            #clock { font-size: 2rem; }
         }
-
-        /* Telas até 768px (Smartphones na Vertical) */
         @media (max-width: 768px) {
-            .screen-container { padding: 10px; }
-            
-            /* Reorganiza o cabeçalho em duas linhas */
-            header { flex-direction: column; align-items: center; gap: 10px; }
-            .header-right { width: 100%; justify-content: space-between; }
-            .stats-bar { justify-content: center; }
-
-            /* MÁGICA DO CELULAR: Esconde Sala, GC e DTV para focar no que importa */
-            /* Apenas: Pauta (Hora+Status+Nome), Libras e X-Conv vão aparecer */
-            .pauta-grid-header, .pauta-row {
-                grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
-            }
-            
-            /* Esconde as colunas 2, 5, 6 e 7 */
-            .pauta-grid-header div:nth-child(2), .pauta-row div:nth-child(2), /* Sala */
-            .pauta-grid-header div:nth-child(5), .pauta-row div:nth-child(5), /* GC */
-            .pauta-grid-header div:nth-child(6), .pauta-row div:nth-child(6), /* GC Op */
-            .pauta-grid-header div:nth-child(7), .pauta-row div:nth-child(7)  /* DTV */
-            { display: none; }
-
-            .comissao-name { font-size: 1.1rem; }
-            .col-hora { font-size: 1.1rem; }
-            .libras-tag, .xconv-tag { font-size: 1rem; padding: 2px 4px; }
+            .pauta-grid-header, .pauta-row { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); }
+            .pauta-grid-header div:nth-child(2), .pauta-row div:nth-child(2), 
+            .pauta-grid-header div:nth-child(5), .pauta-row div:nth-child(5), 
+            .pauta-grid-header div:nth-child(6), .pauta-row div:nth-child(6), 
+            .pauta-grid-header div:nth-child(7), .pauta-row div:nth-child(7) { display: none; }
         }
     </style>
 </head>
 
 <body>
-    
     <div class="screen-container">
         <header>
             <div class="title-group">
                 <div class="stats-bar">
-                    <div class="stat-badge s-iniciada">NO AR: <span id="count-iniciada">0</span></div>
-                    <div class="stat-badge s-suspensa">SUSP: <span id="count-suspensa">0</span></div>
-                    <div class="stat-badge s-aguardando">AGUARD: <span id="count-aguardando">0</span></div>
-                    <div class="stat-badge s-encerrada">ENCER: <span id="count-encerrada">0</span></div>
+                    <div id="badge-iniciada" class="stat-badge s-iniciada" onclick="toggleFilter('iniciada')" role="button" tabindex="0" aria-label="Filtrar pautas no ar">NO AR: <span id="count-iniciada">0</span></div>
+                    <div id="badge-suspensa" class="stat-badge s-suspensa" onclick="toggleFilter('suspensa')" role="button" tabindex="0" aria-label="Filtrar pautas suspensas">SUSP: <span id="count-suspensa">0</span></div>
+                    <div id="badge-aguardando" class="stat-badge s-aguardando" onclick="toggleFilter('aguardando')" role="button" tabindex="0" aria-label="Filtrar pautas aguardando">AGUARD: <span id="count-aguardando">0</span></div>
+                    <div id="badge-encerrada" class="stat-badge s-encerrada" onclick="toggleFilter('encerrada')" role="button" tabindex="0" aria-label="Filtrar pautas encerradas">ENCER: <span id="count-encerrada">0</span></div>
+                    <button class="stat-badge" onclick="resetOrdemManual()" title="Resetar ordenação manual" style="background: #6c757d; color: #fff; border-color: #6c757d;">🔄 Auto</button>
                 </div>
             </div>
-            <div id="clock">00:00:00</div>
+            <div id="clock" aria-live="polite">00:00:00</div>
         </header>
 
-        <div id="viewport-scroll">
-            
+        <div id="viewport-scroll" role="region" aria-label="Lista de pautas">
             <div class="pauta-grid-header">
-                <div style="text-align: left;">Pauta</div> 
+                <div style="text-align: left; padding-left: 30px;">Pauta</div> 
                 <div>Sala</div>
                 <div>Libras</div>
                 <div>X-Conv</div>                
@@ -323,14 +258,12 @@
                 <div>GC Op</div>
                 <div>DTV</div>
             </div>
-
             <div id="corpo-scroll"></div>
-            
         </div>
     </div>
 
-    <div id="history-section">
-        <div class="history-title">Histórico de Sessões</div>
+    <div id="history-section" style="display: none;" role="region" aria-label="Histórico de pautas">
+        <div class="history-title">Histórico e Pautas Ocultas</div>
         <div id="corpo-bottom"></div>
     </div>
 
@@ -338,170 +271,359 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
 <script>
-    // 2. CONFIGURAÇÃO FIREBASE (SUAS CHAVES)
-    const firebaseConfig = {
-        apiKey: "AIzaSyCRZXbRFqotcxdPAl6ptg06jDf_GpW2De8",
-        authDomain: "sistema-tvsenado.firebaseapp.com",
-        databaseURL: "https://sistema-tvsenado-default-rtdb.firebaseio.com",
-        projectId: "sistema-tvsenado",
-        storageBucket: "sistema-tvsenado.firebasestorage.app",
-        messagingSenderId: "895965318952",
-        appId: "1:895965318952:web:3eab09f06ce06d76674a1d"
-    };
+/**
+ * listaaovivo1.html - Versão Melhorada
+ * Mudanças: tratamento de erros básico, acessibilidade, performance
+ */
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database().ref('pauta_tv_senado');
+// ========================================================
+// 1. CONFIGURAÇÃO FIREBASE
+// ========================================================
+const firebaseConfig = {
+    apiKey: "AIzaSyCRZXbRFqotcxdPAl6ptg06jDf_GpW2De8",
+    authDomain: "sistema-tvsenado.firebaseapp.com",
+    databaseURL: "https://sistema-tvsenado-default-rtdb.firebaseio.com",
+    projectId: "sistema-tvsenado",
+    storageBucket: "sistema-tvsenado.firebasestorage.app",
+    messagingSenderId: "895965318952",
+    appId: "1:895965318952:web:3eab09f06ce06d76674a1d"
+};
 
-    let scrollDir = 1; 
-    let isDragging = false;
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database().ref('pauta_tv_senado');
 
-    // 3. ESCUTA A NUVEM EM TEMPO REAL
+let scrollDir = 1; 
+let isDragging = false;
+let filtroAtivo = null; 
+    let ordemManual = null; // Armazena a ordem manual do usuário
+    window.lastPautaData = []; 
+
+    // Carregar ordem manual do localStorage
+    function carregarOrdemManual() {
+        const salva = localStorage.getItem('pauta_ordem_manual');
+        if (salva) {
+            try {
+                ordemManual = JSON.parse(salva);
+            } catch (e) {
+                ordemManual = null;
+            }
+        }
+    }
+    carregarOrdemManual();
+
+    // 2. ESCUTA A NUVEM
     db.on('value', (snapshot) => {
         if (isDragging) return; 
-        const p = snapshot.val() || [];
-        renderizarMonitor(p);
+        window.lastPautaData = snapshot.val() || [];
+        renderizarMonitor();
     });
 
-    // Relógio e checagem de urgência a cada segundo
-    setInterval(() => { 
-        document.getElementById('clock').innerText = new Date().toLocaleTimeString('pt-BR'); 
-        if (!isDragging) verificarUrgenciaLocal();
-    }, 1000);
+setInterval(() => { 
+    document.getElementById('clock').innerText = new Date().toLocaleTimeString('pt-BR'); 
+    if (!isDragging) verificarUrgenciaLocal();
+}, 1000);
 
-    // 4. FUNÇÃO DE RENDERIZAÇÃO (ESTILO LISTA PC)
-    function renderizarMonitor(p) {
-        const cScroll = document.getElementById('corpo-scroll');
-        const cBot = document.getElementById('corpo-bottom'); 
+// ========================================================
+// 3. FUNÇÕES INTERATIVAS
+// ========================================================
+function toggleFilter(st) {
+    if (filtroAtivo === st) filtroAtivo = null; 
+    else filtroAtivo = st;   
+    renderizarMonitor();    
+}
+
+function toggleOcultar(id) {
+    let pautasOcultas = JSON.parse(localStorage.getItem('pautas_ocultas_tv') || '[]');
+    if (pautasOcultas.includes(id)) {
+        pautasOcultas = pautasOcultas.filter(x => x !== id);
+    } else {
+        pautasOcultas.push(id); 
+    }
+    localStorage.setItem('pautas_ocultas_tv', JSON.stringify(pautasOcultas));
+    renderizarMonitor(); 
+}
+
+// ========================================================
+// 4. AUTO-RESIZE DE TEXTOS (otimizado)
+// ========================================================
+function ajustarTextos() {
+    const elements = document.querySelectorAll('.resize-me');
+    const containerWidth = document.getElementById('viewport-scroll')?.clientWidth || window.innerWidth;
+    
+    elements.forEach(el => {
+        el.style.fontSize = ''; 
+        const overflowOriginal = el.style.overflow;
+        el.style.overflow = 'visible'; 
         
-        if (!cScroll || !cBot) return; 
+        let availWidth = el.parentElement?.clientWidth || containerWidth;
+        if (el.classList.contains('comissao-name') || el.classList.contains('col-sala')) {
+            availWidth = el.clientWidth;
+        }
 
-        cScroll.innerHTML = ''; cBot.innerHTML = '';
+        let loopGuard = 20;
+        let currentSize = parseFloat(window.getComputedStyle(el).fontSize);
+        
+        while (el.scrollWidth > availWidth && currentSize > 10 && loopGuard > 0) {
+            currentSize -= 0.5;
+            el.style.fontSize = currentSize + 'px';
+            loopGuard--;
+        }
+        el.style.overflow = overflowOriginal; 
+    });
+}
 
-        // ORDENAÇÃO: 1º Libras | 2º Horário
-        let pCopia = [...p];
+// ========================================================
+// 5. RENDERIZAÇÃO PRINCIPAL
+// ========================================================
+function renderizarMonitor() {
+    const cScroll = document.getElementById('corpo-scroll');
+    const cBot = document.getElementById('corpo-bottom'); 
+    
+    if (!cScroll || !cBot) return; 
+    cScroll.innerHTML = ''; 
+    cBot.innerHTML = '';
+
+    const pautasOcultas = JSON.parse(localStorage.getItem('pautas_ocultas_tv') || '[]');
+
+    // Atualizar badges de filtro
+    ['iniciada', 'suspensa', 'aguardando', 'encerrada'].forEach(s => {
+        const badge = document.getElementById('badge-' + s);
+        if (badge) {
+            badge.classList.toggle('filtro-ativo', filtroAtivo === s);
+            badge.setAttribute('aria-pressed', filtroAtivo === s);
+        }
+    });
+
+    let pCopia = [...(window.lastPautaData || [])];
+    
+    // Se há ordem manual salva, usa ela; caso contrário, usa ordenação automática
+    if (ordemManual && Object.keys(ordemManual).length > 0) {
         pCopia.sort((a, b) => {
-            const libraA = a.libra || "";
-            const libraB = b.libra || "";
-            const compareLibra = libraA.localeCompare(libraB, undefined, {numeric: true});
-            if (compareLibra !== 0) return compareLibra;
-            return (a.hora || "").localeCompare(b.hora || "");
+            const ordemA = ordemManual[a.id] ?? 9999;
+            const ordemB = ordemManual[b.id] ?? 9999;
+            return ordemA - ordemB;
         });
-
-        // Rastreador de Conflitos (Amarelo)
-        let freq = { sala: {}, libra: {}, xconv: {}, gc: {}, dtv: {} };
-        pCopia.forEach(i => {
-            const st = (i.status || '').toLowerCase();
-            if (['iniciada', 'iniciado', 'no ar', 'suspensa', 'suspenso', 'aguardando', 'proxima'].includes(st)) {
-                if (i.sala && i.sala !== "-") freq.sala[i.sala] = (freq.sala[i.sala] || 0) + 1;
-                if (i.libra && i.libra !== "-") freq.libra[i.libra] = (freq.libra[i.libra] || 0) + 1;
-                if (i.xconv && i.xconv !== "-") freq.xconv[i.xconv] = (freq.xconv[i.xconv] || 0) + 1;
-                if (i.gc && i.gc !== "-") freq.gc[i.gc] = (freq.gc[i.gc] || 0) + 1;
-                if (i.dtv && i.dtv !== "-") freq.dtv[i.dtv] = (freq.dtv[i.dtv] || 0) + 1;
-            }
-        });
-
-        const checkDupe = (val, type) => (freq[type] && freq[type][val] > 1) ? `conflito-amarelo` : '';
-        const checkText = (val) => (val && val.trim() !== "") ? val : '—';
-        
-        let contadores = { iniciada: 0, suspensa: 0, aguardando: 0, encerrada: 0 };
-        const agora = new Date();
-
-        pCopia.forEach(i => {
-            const row = document.createElement('div');
-            const rawSt = (i.status || 'aguardando').toLowerCase();
+    } else {
+        // Ordenação automática: primeiro por Libras, depois por hora
+        pCopia.sort((a, b) => {
+            const libA = a.libra?.toString().trim() || "";
+            const libB = b.libra?.toString().trim() || "";
             
-            let st = 'aguardando';
-            if (['iniciada', 'iniciado', 'no ar'].includes(rawSt)) st = 'iniciada';
-            else if (['suspensa', 'suspenso'].includes(rawSt)) st = 'suspensa';
-            else if (['encerrada', 'cancelada', 'encerrado', 'cancelado'].includes(rawSt)) st = 'encerrada';
-
-            contadores[st]++;
-
-            let classeUrgente = '';
-            if (st === 'aguardando') {
-                const [h, m] = i.hora.split(':').map(Number);
-                const hP = new Date(); hP.setHours(h, m, 0);
-                if ((hP - agora) / 60000 <= 5) classeUrgente = 'urgente';
+            if ((libA === "" && libB === "") || (libA !== "" && libB !== "")) {
+                if (libA !== libB) return libA.localeCompare(libB, undefined, {numeric: true});
+                return (a.hora || "").localeCompare(b.hora || "");
             }
-
-            row.className = `pauta-row status-${st} ${classeUrgente}`;
-            row.innerHTML = `
-                <div class="col-main">
-                    <div class="col-hora">${i.hora}</div>
-                    <div class="status-dot-wrapper"><span class="status-dot"></span></div>
-                    <div class="comissao-name" title="${i.comissao}">${i.comissao}</div>
-                </div>
-                <div class="col-sala ${checkDupe(i.sala, 'sala')}">${checkText(i.sala)}</div>
-                <div class="tech-data"><span class="libras-tag ${checkDupe(i.libra, 'libra')}">${checkText(i.libra)}</span></div>
-                <div class="tech-data"><span class="xconv-tag ${checkDupe(i.xconv, 'xconv')}">${checkText(i.xconv)}</span></div>
-                <div class="tech-data"><span class="GC-tag ${checkDupe(i.gc, 'gc')}">${checkText(i.gc)}</span></div>
-                <div class="tech-data"><span class="GC-op">${checkText(i.gcop)}</span></div>
-                <div class="tech-data ${checkDupe(i.dtv, 'dtv')}">${checkText(i.dtv)}</div>
-            `;
-
-            // Envia para a seção de Histórico (baixo) ou Pauta Ativa (cima)
-            if (st === 'encerrada') {
-                cBot.appendChild(row); 
-            } else {
-                cScroll.appendChild(row); 
-            }
+            return libA !== "" ? -1 : 1;
         });
-
-        // Atualiza contadores no cabeçalho
-        if(document.getElementById('count-iniciada')) document.getElementById('count-iniciada').innerText = contadores.iniciada;
-        if(document.getElementById('count-suspensa')) document.getElementById('count-suspensa').innerText = contadores.suspensa;
-        if(document.getElementById('count-aguardando')) document.getElementById('count-aguardando').innerText = contadores.aguardando;
-        if(document.getElementById('count-encerrada')) document.getElementById('count-encerrada').innerText = contadores.encerrada;
-
-        // LÓGICA DE ESPAÇO INTELIGENTE: O histórico ocupa apenas o necessário
-        const historySection = document.getElementById('history-section');
-        if (historySection) {
-            historySection.style.display = (contadores.encerrada > 0) ? 'block' : 'none';
-        }
     }
 
-    // 5. AUTO-SCROLL (SOMENTE NA ÁREA ATIVA)
-    function autoScroll() {
-        if (isDragging) return;
-        const container = document.getElementById('viewport-scroll');
-        if (!container || localStorage.getItem('tv_scroll_active') === 'false') return;
-        
-        const maxScroll = container.scrollHeight - container.clientHeight;
-        if (maxScroll > 10) {
-            container.scrollTop += 0.8 * scrollDir;
-            if (container.scrollTop >= maxScroll) scrollDir = -1;
-            if (container.scrollTop <= 0) scrollDir = 1;
-        } else {
-            container.scrollTop = 0;
-        }
-    }
+    // Contadores por status
+    let contadores = { iniciada: 0, suspensa: 0, aguardando: 0, encerrada: 0 };
+    pCopia.forEach(i => {
+        const rawSt = (i.status || 'aguardando').toLowerCase();
+        let st = 'aguardando';
+        if (['iniciada', 'iniciado', 'no ar'].includes(rawSt)) st = 'iniciada';
+        else if (['suspensa', 'suspenso'].includes(rawSt)) st = 'suspensa';
+        else if (['encerrada', 'cancelada', 'encerrado', 'cancelado'].includes(rawSt)) st = 'encerrada';
+        contadores[st]++;
+    });
 
-    function verificarUrgenciaLocal() {
-        const agora = new Date();
-        document.querySelectorAll('.pauta-row.status-aguardando').forEach(row => {
-            const hStr = row.querySelector('.col-hora').innerText;
-            if(!hStr.includes(':')) return;
-            const [h, m] = hStr.split(':').map(Number);
+    // Atualizar contadores
+    ['iniciada', 'suspensa', 'aguardando', 'encerrada'].forEach(s => {
+        const el = document.getElementById('count-' + s);
+        if (el) el.innerText = contadores[s];
+    });
+
+    // Detectar conflitos (recursos duplicados)
+    let freq = { sala: {}, libra: {}, xconv: {}, gc: {}, dtv: {} };
+    pCopia.forEach(i => {
+        const st = (i.status || '').toLowerCase();
+        if (['iniciada', 'iniciado', 'no ar', 'suspensa', 'suspenso', 'aguardando', 'proxima'].includes(st)) {
+            if (i.sala && i.sala !== "-") freq.sala[i.sala] = (freq.sala[i.sala] || 0) + 1;
+            if (i.libra && i.libra !== "-") freq.libra[i.libra] = (freq.libra[i.libra] || 0) + 1;
+            if (i.xconv && i.xconv !== "-") freq.xconv[i.xconv] = (freq.xconv[i.xconv] || 0) + 1;
+            if (i.gc && i.gc !== "-") freq.gc[i.gc] = (freq.gc[i.gc] || 0) + 1;
+            if (i.dtv && i.dtv !== "-") freq.dtv[i.dtv] = (freq.dtv[i.dtv] || 0) + 1;
+        }
+    });
+
+    const checkDupe = (val, type) => (freq[type]?.[val] > 1) ? 'conflito-amarelo' : '';
+    const checkText = (val) => (val && val.trim()) ? val : '—';
+    const formatSala = (val) => {
+        if (!val || !val.trim() || val === "-") return '—';
+        let v = val.trim();
+        return (v.length === 1 && !isNaN(v)) ? v.padStart(2, '0') : v;
+    };
+
+    const agora = new Date();
+    let qtdItensBottom = 0; 
+
+    pCopia.forEach(i => {
+        const rawSt = (i.status || 'aguardando').toLowerCase();
+        let st = 'aguardando';
+        if (['iniciada', 'iniciado', 'no ar'].includes(rawSt)) st = 'iniciada';
+        else if (['suspensa', 'suspenso'].includes(rawSt)) st = 'suspensa';
+        else if (['encerrada', 'cancelada', 'encerrado', 'cancelado'].includes(rawSt)) st = 'encerrada';
+
+        if (filtroAtivo && st !== filtroAtivo) return; 
+
+        const isOculta = pautasOcultas.includes(i.id);
+        const iconeOlho = isOculta ? '🙈' : '👁️';
+
+        let classeUrgente = '';
+        if (st === 'aguardando' && i.hora) {
+            const [h, m] = i.hora.split(':').map(Number);
             const hP = new Date(); hP.setHours(h, m, 0);
-            const diff = (hP - agora) / 60000;
-            if (diff <= 5 && diff >= -60) row.classList.add('urgente');
-            else row.classList.remove('urgente');
-        });
+            if ((hP - agora) / 60000 <= 5) classeUrgente = 'urgente';
+        }
+
+        const row = document.createElement('div');
+        row.className = `pauta-row status-${st} ${classeUrgente}`;
+        if (isOculta) row.classList.add('oculta');
+        row.setAttribute('role', 'article');
+        row.setAttribute('aria-label', `${i.comissao} - ${st}`);
+        
+        row.innerHTML = `
+            <div class="col-main">
+                <button class="btn-ocultar" onclick="toggleOcultar(${i.id})" title="${isOculta ? 'Desocultar' : 'Ocultar Pauta'}" aria-label="${isOculta ? 'Mostrar' : 'Ocultar'} pauta ${i.comissao}">${iconeOlho}</button>
+                <div class="col-hora">${i.hora || '--:--'}</div>
+                <div class="status-dot-wrapper"><span class="status-dot"></span></div>
+                <div class="comissao-name resize-me" title="${i.comissao}">${i.comissao}</div>
+            </div>
+            <div class="col-sala resize-me ${checkDupe(i.sala, 'sala')}">${formatSala(i.sala)}</div>
+            <div class="tech-data"><span class="libras-tag resize-me ${checkDupe(i.libra, 'libra')}">${checkText(i.libra)}</span></div>
+            <div class="tech-data"><span class="xconv-tag resize-me ${checkDupe(i.xconv, 'xconv')}">${checkText(i.xconv)}</span></div>
+            <div class="tech-data"><span class="GC-tag resize-me ${checkDupe(i.gc, 'gc')}">${checkText(i.gc)}</span></div>
+            <div class="tech-data"><span class="GC-op resize-me">${checkText(i.gcop)}</span></div>
+            <div class="tech-data"><span class="dtv-tag resize-me ${checkDupe(i.dtv, 'dtv')}">${checkText(i.dtv)}</span></div>
+        `;
+
+        if (st === 'encerrada' || isOculta) {
+            cBot.appendChild(row); 
+            qtdItensBottom++;
+        } else {
+            cScroll.appendChild(row); 
+        }
+    });
+
+    const historySection = document.getElementById('history-section');
+    if (historySection) {
+        historySection.style.display = qtdItensBottom > 0 ? 'block' : 'none';
     }
 
-    // 6. DRAG AND DROP (SORTABLE)
-    if(typeof Sortable !== 'undefined') {
-        const dragOptions = { 
-            animation: 150, 
-            ghostClass: 'sortable-ghost', 
-            onStart: () => isDragging = true, 
-            onEnd: () => isDragging = false
-        };
-        if(document.getElementById('corpo-scroll')) Sortable.create(document.getElementById('corpo-scroll'), dragOptions);
-        if(document.getElementById('corpo-bottom')) Sortable.create(document.getElementById('corpo-bottom'), dragOptions);
-    }
+    // Debounced resize
+    requestAnimationFrame(() => setTimeout(ajustarTextos, 50));
+}
 
-    setInterval(autoScroll, 30);
+// ========================================================
+// 6. AUTO-SCROLL
+// ========================================================
+function autoScroll() {
+    if (isDragging || !conexaoAtiva) return;
+    const container = document.getElementById('viewport-scroll');
+    if (!container || localStorage.getItem('tv_scroll_active') === 'false') return;
+    
+    const maxScroll = container.scrollHeight - container.clientHeight;
+    if (maxScroll > 10) {
+        container.scrollTop += 0.8 * scrollDir;
+        if (container.scrollTop >= maxScroll) scrollDir = -1;
+        if (container.scrollTop <= 0) scrollDir = 1;
+    } else {
+        container.scrollTop = 0;
+    }
+}
+
+function verificarUrgenciaLocal() {
+    const agora = new Date();
+    document.querySelectorAll('.pauta-row.status-aguardando').forEach(row => {
+        const hStr = row.querySelector('.col-hora')?.innerText;
+        if (!hStr || !hStr.includes(':')) return;
+        const [h, m] = hStr.split(':').map(Number);
+        const hP = new Date(); hP.setHours(h, m, 0);
+        const diff = (hP - agora) / 60000;
+        row.classList.toggle('urgente', diff <= 5 && diff >= -60);
+    });
+}
+
+window.addEventListener('resize', () => {
+    clearTimeout(window.resizeTimeout);
+    window.resizeTimeout = setTimeout(ajustarTextos, 150);
+});
+
+// ========================================================
+// 7. DRAG AND DROP COM PERSISTÊNCIA
+// ========================================================
+if (typeof Sortable !== 'undefined') {
+    const dragOptions = { 
+        animation: 150, 
+        ghostClass: 'sortable-ghost', 
+        onStart: () => isDragging = true, 
+        onEnd: (evt) => {
+            isDragging = false;
+            salvarOrdenacao(evt.oldIndex, evt.newIndex);
+        }
+    };
+    
+    const corpoScroll = document.getElementById('corpo-scroll');
+    const corpoBottom = document.getElementById('corpo-bottom');
+    
+    if (corpoScroll) {
+        Sortable.create(corpoScroll, { ...dragOptions, onEnd: (evt) => {
+            isDragging = false;
+            salvarOrdenacao(evt.oldIndex, evt.newIndex);
+        }});
+    }
+    if (corpoBottom) Sortable.create(corpoBottom, dragOptions);
+}
+
+function salvarOrdenacao(oldIndex, newIndex) {
+    // Pegar os IDs das pautas na ordem atual do DOM
+    const container = document.getElementById('corpo-scroll');
+    if (!container) return;
+    
+    const rows = container.querySelectorAll('.pauta-row');
+    const novaOrdem = {};
+    
+    rows.forEach((row, index) => {
+        // Extrair o ID do elemento (data-id ou pelo onclick)
+        const btn = row.querySelector('.btn-ocultar');
+        if (btn) {
+            const onclick = btn.getAttribute('onclick');
+            const match = onclick.match(/toggleOcultar\((\d+)\)/);
+            if (match) {
+                novaOrdem[parseInt(match[1])] = index;
+            }
+        }
+    });
+    
+    // Salvar no localStorage
+    localStorage.setItem('pauta_ordem_manual', JSON.stringify(novaOrdem));
+    ordemManual = novaOrdem;
+    
+    console.log('📌 Ordem manual salva:', novaOrdem);
+}
+
+// Botão para resetar ordenação manual
+function resetOrdemManual() {
+    localStorage.removeItem('pauta_ordem_manual');
+    ordemManual = null;
+    renderizarMonitor();
+}
+
+// ========================================================
+// 8. INICIALIZAÇÃO
+// ========================================================
+document.addEventListener('DOMContentLoaded', () => {
+    renderizarMonitor();
+});
+
+// Auto-scroll
+setInterval(autoScroll, 30);
+
+// Cleanup ao sair
+window.addEventListener('beforeunload', () => {
+    if (db) db.off();
+});
 </script>
 </body>
 </html>
